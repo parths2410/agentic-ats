@@ -1,0 +1,111 @@
+
+ RUN  v2.1.9 /home/boomerang/spine/agentic-ats/frontend
+      Coverage enabled with v8
+
+ ✓ src/components/HealthBadge/HealthBadge.test.jsx (3 tests) 88ms
+ ✓ src/services/api.test.js (8 tests) 47ms
+stderr | src/components/RoleSetup/RoleSetup.test.jsx > RoleSetup — new role > creates a role and navigates to its detail page
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+stderr | src/App.test.jsx > App > renders the role list landing page without a top nav
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+Warning: An update to RoleList inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at RoleList (/home/boomerang/spine/agentic-ats/frontend/src/components/RoleList/RoleList.jsx:97:51)
+    at RenderedRoute (/home/boomerang/spine/agentic-ats/frontend/node_modules/react-router/dist/umd/react-router.development.js:539:7)
+    at Routes (/home/boomerang/spine/agentic-ats/frontend/node_modules/react-router/dist/umd/react-router.development.js:1273:7)
+    at main
+    at App
+    at Router (/home/boomerang/spine/agentic-ats/frontend/node_modules/react-router/dist/umd/react-router.development.js:1207:17)
+    at MemoryRouter (/home/boomerang/spine/agentic-ats/frontend/node_modules/react-router/dist/umd/react-router.development.js:1101:7)
+Warning: An update to HealthBadge inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at HealthBadge (/home/boomerang/spine/agentic-ats/frontend/src/components/HealthBadge/HealthBadge.jsx:8:53)
+    at footer
+    at App
+    at Router (/home/boomerang/spine/agentic-ats/frontend/node_modules/react-router/dist/umd/react-router.development.js:1207:17)
+    at MemoryRouter (/home/boomerang/spine/agentic-ats/frontend/node_modules/react-router/dist/umd/react-router.development.js:1101:7)
+Warning: An update to RoleList inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at RoleList (/home/boomerang/spine/agentic-ats/frontend/src/components/RoleList/RoleList.jsx:97:51)
+    at RenderedRoute (/home/boomerang/spine/agentic-ats/frontend/node_modules/react-router/dist/umd/react-router.development.js:539:7)
+    at Routes (/home/boomerang/spine/agentic-ats/frontend/node_modules/react-router/dist/umd/react-router.development.js:1273:7)
+    at main
+    at App
+    at Router (/home/boomerang/spine/agentic-ats/frontend/node_modules/react-router/dist/umd/react-router.development.js:1207:17)
+    at MemoryRouter (/home/boomerang/spine/agentic-ats/frontend/node_modules/react-router/dist/umd/react-router.development.js:1101:7)
+
+stderr | src/components/Workspace/Workspace.test.jsx > Workspace > renders header, candidate list, and chat panel
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ✓ src/hooks/useProgress.test.js (7 tests) 50ms
+ ✓ src/App.test.jsx (3 tests) 190ms
+stderr | src/components/RoleList/RoleList.test.jsx > RoleList > renders the sticky header with title and the new-role button
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ✓ src/components/RoleSetup/CriterionCard.test.jsx (6 tests) 364ms
+ ✓ src/components/RoleSetup/UploadZone.test.jsx (7 tests) 534ms
+ ✓ src/components/Workspace/ChatPanel.test.jsx (7 tests) 593ms
+ ✓ src/components/RoleSetup/RoleSetup.test.jsx (9 tests) 711ms
+   ✓ RoleSetup — new role > creates a role and navigates to its detail page 371ms
+ ✓ src/components/RoleList/RoleList.test.jsx (11 tests) 503ms
+ ✓ src/components/Workspace/Workspace.test.jsx (11 tests) 611ms
+ ✓ src/hooks/useChat.test.js (13 tests) 720ms
+
+ Test Files  11 passed (11)
+      Tests  85 passed (85)
+   Start at  14:33:05
+   Duration  2.76s (transform 529ms, setup 972ms, collect 2.40s, tests 4.41s, environment 8.92s, prepare 2.68s)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   90.07 |    82.09 |   90.36 |   90.07 |                   
+ src               |     100 |      100 |     100 |     100 |                   
+  App.jsx          |     100 |      100 |     100 |     100 |                   
+ ...ts/HealthBadge |     100 |      100 |     100 |     100 |                   
+  HealthBadge.jsx  |     100 |      100 |     100 |     100 |                   
+ ...nents/RoleList |     100 |    95.65 |     100 |     100 |                   
+  RoleList.jsx     |     100 |    95.65 |     100 |     100 | 56                
+ ...ents/RoleSetup |   91.77 |    84.84 |   82.75 |   91.77 |                   
+  ...erionCard.jsx |     100 |      100 |     100 |     100 |                   
+  RoleSetup.jsx    |    87.2 |    77.58 |   64.28 |    87.2 | ...65,175,200-202 
+  UploadZone.jsx   |     100 |    94.28 |     100 |     100 | 35,42             
+ ...ents/Workspace |   79.77 |    74.59 |     100 |   79.77 |                   
+  ChatPanel.jsx    |   97.29 |    79.16 |     100 |   97.29 | 58-60             
+  Workspace.jsx    |   76.22 |    73.46 |     100 |   76.22 | ...94-396,409-411 
+ src/hooks         |   97.97 |    80.55 |   83.33 |   97.97 |                   
+  useChat.js       |   97.31 |    83.33 |      75 |   97.31 | 117-118,146-147   
+  useProgress.js   |     100 |    76.66 |     100 |     100 | 16,24,34,38,41,50 
+ src/services      |     100 |       90 |   91.66 |     100 |                   
+  api.js           |     100 |       90 |   91.66 |     100 | 14-15,81,86       
+-------------------|---------|----------|---------|---------|-------------------
