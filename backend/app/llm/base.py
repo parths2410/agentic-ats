@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
+from app.llm.types import LLMMessage, LLMResponse
 from app.schemas.criterion import CriterionProposal
 
 
@@ -27,5 +28,19 @@ class LLMProvider(ABC):
         """Score a candidate against criteria.
 
         Returns {"scores": [{criterion_name, score, rationale}, ...], "overall_summary": str}.
+        """
+        ...
+
+    @abstractmethod
+    async def chat(
+        self,
+        messages: list[LLMMessage],
+        tools: list[dict[str, Any]],
+        system_prompt: str,
+    ) -> LLMResponse:
+        """One agentic-loop turn: send messages + tool defs, get text and/or tool calls.
+
+        Implementations map this to their native tool-use API. The loop lives
+        in ChatService — this method MUST NOT loop on its own.
         """
         ...

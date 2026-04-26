@@ -19,6 +19,7 @@ from app.llm.prompts.score_candidate import (
     SYSTEM_PROMPT as SCORE_CANDIDATE_SYSTEM,
     build_user_prompt as build_score_candidate_user_prompt,
 )
+from app.llm.types import LLMMessage, LLMResponse, ToolCall
 from app.schemas.criterion import CriterionProposal
 
 
@@ -192,3 +193,81 @@ class AnthropicProvider(LLMProvider):
             "scores": cleaned,
             "overall_summary": str(payload.get("overall_summary", "")).strip(),
         }
+
+    # ------------------------------------------------------------------
+    # chat() — single agentic turn (used by ChatService loop)
+    # ------------------------------------------------------------------
+
+    async def chat(
+        self,
+        messages: list[LLMMessage],
+        tools: list[dict[str, Any]],
+        system_prompt: str,
+    ) -> LLMResponse:
+        anthropic_messages = self._to_anthropic_messages(messages)
+        message = await self._client.messages.create(
+            model=self._model,
+            max_tokens=2048,
+            system=system_prompt,
+            tools=tools or None,
+            messages=anthropic_messages,
+        )
+        return self._parse_chat_response(message)
+
+    @staticmethod
+    def _to_anthropic_messages(messages: list[LLMMessage]) -> list[dict[str, Any]]:
+        """Convert our normalized history into the wire format Anthropic expects."""
+        out: list[dict[str, Any]] = []
+        for m in messages:
+            if m.role == "user":
+                out.append({"role": "user", "content": str(m.content or "")})
+            elif m.role == "assistant":
+                blocks: list[dict[str, Any]] = []
+                if m.content:
+                    blocks.append({"type": "text", "text": str(m.content)})
+                for call in m.tool_calls:
+                    blocks.append({
+                        "type": "tool_use",
+                        "id": call.id,
+                        "name": call.name,
+                        "input": call.arguments,
+                    })
+                out.append({"role": "assistant", "content": blocks})
+            elif m.role == "tool":
+                # Tool results are sent as user messages with a tool_result block.
+                serialized = (
+                    m.content if isinstance(m.content, str) else json.dumps(m.content, default=str)
+                )
+                out.append({
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": m.tool_call_id or "",
+                            "content": serialized,
+                        }
+                    ],
+                })
+        return out
+
+    @staticmethod
+    def _parse_chat_response(message: Any) -> LLMResponse:
+        text_parts: list[str] = []
+        tool_calls: list[ToolCall] = []
+        for block in getattr(message, "content", []) or []:
+            block_type = getattr(block, "type", None)
+            if block_type == "text":
+                text_parts.append(getattr(block, "text", "") or "")
+            elif block_type == "tool_use":
+                tool_calls.append(
+                    ToolCall(
+                        id=getattr(block, "id", ""),
+                        name=getattr(block, "name", ""),
+                        arguments=dict(getattr(block, "input", {}) or {}),
+                    )
+                )
+        return LLMResponse(
+            text="".join(text_parts).strip(),
+            tool_calls=tool_calls,
+            stop_reason=getattr(message, "stop_reason", None),
+        )
