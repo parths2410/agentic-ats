@@ -1,0 +1,55 @@
+
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.11.5-final-0 ________________
+
+Name                                  Stmts   Miss  Cover   Missing
+-------------------------------------------------------------------
+app/__init__.py                           0      0   100%
+app/api/__init__.py                       0      0   100%
+app/api/candidates.py                    79      9    89%   80, 103-110, 150
+app/api/chat.py                          32      0   100%
+app/api/criteria.py                      75      2    97%   112, 116
+app/api/health.py                         5      0   100%
+app/api/roles.py                         34      0   100%
+app/api/scoring.py                       26      6    77%   30-36
+app/api/websocket.py                     78      8    90%   34, 36, 38, 48, 88-89, 108-109
+app/config.py                             8      0   100%
+app/database.py                          33      0   100%
+app/llm/__init__.py                      12      1    92%   11
+app/llm/anthropic_provider.py           165      4    98%   184, 190-191, 240
+app/llm/base.py                          13      0   100%
+app/llm/prompts/__init__.py               0      0   100%
+app/llm/prompts/chat_system.py           16      0   100%
+app/llm/prompts/extract_criteria.py       3      0   100%
+app/llm/prompts/parse_resume.py           3      0   100%
+app/llm/prompts/score_candidate.py        5      0   100%
+app/llm/types.py                         22      0   100%
+app/main.py                              19      0   100%
+app/models/__init__.py                    0      0   100%
+app/models/candidate.py                  34      0   100%
+app/models/chat.py                       16      0   100%
+app/models/criterion.py                  17      0   100%
+app/models/role.py                       17      0   100%
+app/models/ui_state.py                    9      0   100%
+app/pipeline/__init__.py                  0      0   100%
+app/pipeline/progress.py                 29      4    86%   43-44, 47-48
+app/pipeline/text_extractor.py           45      0   100%
+app/schemas/__init__.py                   0      0   100%
+app/schemas/candidate.py                 28      0   100%
+app/schemas/chat.py                      22      0   100%
+app/schemas/criterion.py                 28      0   100%
+app/schemas/role.py                      23      0   100%
+app/services/__init__.py                  0      0   100%
+app/services/chat_service.py            191      3    98%   77-78, 317
+app/services/resume_service.py          179     14    92%   145, 170, 218, 294, 316, 345-353
+app/services/role_service.py             47      0   100%
+app/services/ui_state_service.py         71      0   100%
+app/tools/__init__.py                     0      0   100%
+app/tools/action_tools.py                38      0   100%
+app/tools/data_tools.py                 173      6    97%   63, 89, 202, 205, 259, 323
+app/tools/definitions.py                 19      0   100%
+app/tools/registry.py                    27      0   100%
+-------------------------------------------------------------------
+TOTAL                                  1641     57    97%
+Required test coverage of 65.0% reached. Total coverage: 96.53%
+============================= 210 passed in 3.86s ==============================
