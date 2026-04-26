@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../../services/api.js";
 import BasicsTab from "./BasicsTab.jsx";
+import CandidateModal from "./CandidateModal.jsx";
 import CriteriaTab from "./CriteriaTab.jsx";
 import ResumesTab from "./ResumesTab.jsx";
 import useProgress from "../../hooks/useProgress.js";
@@ -19,6 +20,7 @@ export default function RoleSetup() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [statusMsg, setStatusMsg] = useState(null);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
 
   const requestedTab = searchParams.get("tab") || "basics";
   const activeTab = TABS.includes(requestedTab) ? requestedTab : "basics";
@@ -136,7 +138,15 @@ export default function RoleSetup() {
           batch={batch}
           onStatus={setStatusMsg}
           onError={setError}
-          onSelect={() => {}}
+          onSelect={setSelectedCandidate}
+        />
+      )}
+
+      {selectedCandidate && (
+        <CandidateModal
+          roleId={roleId}
+          candidate={selectedCandidate}
+          onClose={() => setSelectedCandidate(null)}
         />
       )}
     </section>
