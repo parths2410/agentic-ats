@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { api } from "../../services/api.js";
 import BasicsTab from "./BasicsTab.jsx";
 import CriteriaTab from "./CriteriaTab.jsx";
-import UploadZone from "./UploadZone.jsx";
+import ResumesTab from "./ResumesTab.jsx";
 import useProgress from "../../hooks/useProgress.js";
 
 const TABS = ["basics", "criteria", "resumes"];
@@ -131,16 +131,13 @@ export default function RoleSetup() {
       )}
 
       {visibleTab === "resumes" && isExisting && (
-        <div className="resumes-tab-legacy">
-          <p className="hint">
-            Upload PDF resumes. Parsing and scoring run in the background — open the workspace to
-            watch the ranked list build up.
-          </p>
-          <UploadZone
-            roleId={roleId}
-            onUploaded={() => setStatusMsg("Upload accepted. Processing started.")}
-          />
-        </div>
+        <ResumesTab
+          roleId={roleId}
+          batch={batch}
+          onStatus={setStatusMsg}
+          onError={setError}
+          onSelect={() => {}}
+        />
       )}
     </section>
   );

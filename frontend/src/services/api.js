@@ -60,6 +60,7 @@ export const api = {
         body: fd,
       });
     },
+    pdfUrl: (roleId, id) => `${BASE_URL}/roles/${roleId}/candidates/${id}/pdf`,
   },
 
   scoring: {
