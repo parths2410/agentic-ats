@@ -147,3 +147,80 @@ def test_rescore_endpoint_accepted(client):
     r = client.post(f"/api/roles/{rid}/score")
     assert r.status_code == 202
     assert r.json() == {"status": "rescore_started"}
+
+
+def test_get_pdf_returns_blob(client):
+    rid = _create_role(client)
+    pdf_bytes = b"%PDF-1.4\nfake content"
+    files = [("files", ("hello.pdf", pdf_bytes, "application/pdf"))]
+    cid = client.post(
+        f"/api/roles/{rid}/candidates/upload", files=files
+    ).json()["candidates"][0]["id"]
+    r = client.get(f"/api/roles/{rid}/candidates/{cid}/pdf")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "application/pdf"
+    assert "inline" in r.headers["content-disposition"]
+    assert "hello.pdf" in r.headers["content-disposition"]
+    assert r.content == pdf_bytes
+
+
+def test_get_pdf_unknown_role(client):
+    r = client.get("/api/roles/missing/candidates/whatever/pdf")
+    assert r.status_code == 404
+
+
+def test_get_pdf_unknown_candidate(client):
+    rid = _create_role(client)
+    r = client.get(f"/api/roles/{rid}/candidates/missing/pdf")
+    assert r.status_code == 404
+
+
+def test_get_pdf_candidate_belongs_to_other_role(client):
+    rid_a = _create_role(client)
+    rid_b = _create_role(client)
+    files = [("files", ("a.pdf", b"%PDF-1.4", "application/pdf"))]
+    cid = client.post(
+        f"/api/roles/{rid_a}/candidates/upload", files=files
+    ).json()["candidates"][0]["id"]
+    r = client.get(f"/api/roles/{rid_b}/candidates/{cid}/pdf")
+    assert r.status_code == 404
+
+
+def test_get_pdf_when_blob_missing(client, session_factory):
+    rid = _create_role(client)
+    files = [("files", ("a.pdf", b"%PDF-1.4 hi", "application/pdf"))]
+    cid = client.post(
+        f"/api/roles/{rid}/candidates/upload", files=files
+    ).json()["candidates"][0]["id"]
+    # Simulate the blob being absent — older rows or future migrations.
+    db = session_factory()
+    try:
+        from app.models.candidate import Candidate
+        cand = db.get(Candidate, cid)
+        cand.pdf_blob = None
+        db.commit()
+    finally:
+        db.close()
+    r = client.get(f"/api/roles/{rid}/candidates/{cid}/pdf")
+    assert r.status_code == 404
+    assert "No PDF stored" in r.json()["detail"]
+
+
+def test_get_pdf_strips_quotes_in_filename(client, session_factory):
+    rid = _create_role(client)
+    files = [("files", ("a.pdf", b"%PDF-1.4", "application/pdf"))]
+    cid = client.post(
+        f"/api/roles/{rid}/candidates/upload", files=files
+    ).json()["candidates"][0]["id"]
+    # Force a filename with embedded quotes to ensure the header doesn't break.
+    db = session_factory()
+    try:
+        from app.models.candidate import Candidate
+        cand = db.get(Candidate, cid)
+        cand.pdf_filename = 'weird"name.pdf'
+        db.commit()
+    finally:
+        db.close()
+    r = client.get(f"/api/roles/{rid}/candidates/{cid}/pdf")
+    assert r.status_code == 200
+    assert '"weirdname.pdf"' in r.headers["content-disposition"]

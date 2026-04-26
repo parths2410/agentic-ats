@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -148,6 +148,24 @@ def get_candidate_scores(
     if c is None or c.role_id != role_id:
         raise HTTPException(status_code=404, detail="Candidate not found")
     return _scores_for(db, candidate_id)
+
+
+@router.get("/{candidate_id}/pdf")
+def get_candidate_pdf(
+    role_id: str, candidate_id: str, db: Session = Depends(get_db)
+) -> Response:
+    _ensure_role(role_id, db)
+    c = db.get(Candidate, candidate_id)
+    if c is None or c.role_id != role_id:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    if not c.pdf_blob:
+        raise HTTPException(status_code=404, detail="No PDF stored for this candidate")
+    filename = (c.pdf_filename or "resume.pdf").replace('"', "")
+    return Response(
+        content=bytes(c.pdf_blob),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
 
 
 @router.delete("/{candidate_id}", status_code=status.HTTP_204_NO_CONTENT)
