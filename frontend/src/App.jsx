@@ -33,6 +33,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<RoleList />} />
           <Route path="/roles/new" element={<RoleSetup />} />
+          <Route path="/roles/:roleId" element={<RoleSetup />} />
           <Route path="/workspace" element={<Workspace />} />
         </Routes>
       </main>

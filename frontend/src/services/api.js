@@ -21,4 +21,28 @@ async function request(path, options = {}) {
 
 export const api = {
   health: () => request("/health"),
+
+  roles: {
+    list: () => request("/roles"),
+    get: (id) => request(`/roles/${id}`),
+    create: (payload) => request("/roles", { method: "POST", body: JSON.stringify(payload) }),
+    update: (id, payload) =>
+      request(`/roles/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+    delete: (id) => request(`/roles/${id}`, { method: "DELETE" }),
+  },
+
+  criteria: {
+    list: (roleId) => request(`/roles/${roleId}/criteria`),
+    create: (roleId, payload) =>
+      request(`/roles/${roleId}/criteria`, { method: "POST", body: JSON.stringify(payload) }),
+    update: (roleId, id, payload) =>
+      request(`/roles/${roleId}/criteria/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }),
+    delete: (roleId, id) =>
+      request(`/roles/${roleId}/criteria/${id}`, { method: "DELETE" }),
+    extract: (roleId) =>
+      request(`/roles/${roleId}/criteria/extract`, { method: "POST" }),
+  },
 };
