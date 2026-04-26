@@ -18,4 +18,10 @@ frontend/dist/
 *.db
 *.sqlite
 
+# Test artifacts
+backend/.coverage
+backend/htmlcov/
+frontend/coverage/
+docs/coverage/
+
 
