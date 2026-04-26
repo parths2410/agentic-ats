@@ -2,19 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../../services/api.js";
 import BasicsTab from "./BasicsTab.jsx";
-import CriterionCard from "./CriterionCard.jsx";
+import CriteriaTab from "./CriteriaTab.jsx";
 import UploadZone from "./UploadZone.jsx";
 import useProgress from "../../hooks/useProgress.js";
 
 const TABS = ["basics", "criteria", "resumes"];
-
-function makeDraftId() {
-  return `draft-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function isDraftId(id) {
-  return typeof id === "string" && id.startsWith("draft-");
-}
 
 export default function RoleSetup() {
   const { roleId } = useParams();
@@ -23,11 +15,7 @@ export default function RoleSetup() {
   const isExisting = Boolean(roleId);
 
   const [role, setRole] = useState(null);
-  const [criteria, setCriteria] = useState([]);
-  const [removedIds, setRemovedIds] = useState([]);
-
   const [loading, setLoading] = useState(isExisting);
-  const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [statusMsg, setStatusMsg] = useState(null);
@@ -48,12 +36,8 @@ export default function RoleSetup() {
   useEffect(() => {
     if (!isExisting) return;
     let cancelled = false;
-    Promise.all([api.roles.get(roleId), api.criteria.list(roleId)])
-      .then(([roleData, crits]) => {
-        if (cancelled) return;
-        setRole(roleData);
-        setCriteria(crits);
-      })
+    api.roles.get(roleId)
+      .then((data) => !cancelled && setRole(data))
       .catch((err) => !cancelled && setError(err.message))
       .finally(() => !cancelled && setLoading(false));
     return () => {
@@ -74,102 +58,6 @@ export default function RoleSetup() {
         const created = await api.roles.create({ title, job_description });
         navigate(`/roles/${created.id}`, { replace: true });
       }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleExtract() {
-    setError(null);
-    setStatusMsg(null);
-    if (!isExisting || !role?.job_description?.trim()) {
-      setError("Add a job description in Basics first.");
-      return;
-    }
-    setExtracting(true);
-    try {
-      const { proposals } = await api.criteria.extract(roleId);
-      const drafts = proposals.map((p) => ({
-        id: makeDraftId(),
-        role_id: roleId,
-        name: p.name,
-        description: p.description,
-        weight: p.weight,
-        source: "auto",
-        order_index: 0,
-      }));
-      setCriteria((prev) => [...prev, ...drafts]);
-      setStatusMsg(`Added ${drafts.length} proposed criteria. Review, edit, then Save.`);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setExtracting(false);
-    }
-  }
-
-  function handleAddManual() {
-    setCriteria((prev) => [
-      ...prev,
-      {
-        id: makeDraftId(),
-        role_id: roleId || null,
-        name: "",
-        description: "",
-        weight: 1.0,
-        source: "manual",
-        order_index: 0,
-      },
-    ]);
-  }
-
-  function handleChangeCriterion(index, next) {
-    setCriteria((prev) => prev.map((c, i) => (i === index ? next : c)));
-  }
-
-  function handleRemoveCriterion(index) {
-    setCriteria((prev) => {
-      const target = prev[index];
-      if (target && !isDraftId(target.id)) {
-        setRemovedIds((removed) => [...removed, target.id]);
-      }
-      return prev.filter((_, i) => i !== index);
-    });
-  }
-
-  async function handleSaveCriteria() {
-    setError(null);
-    setStatusMsg(null);
-    setSaving(true);
-    try {
-      for (const id of removedIds) {
-        await api.criteria.delete(roleId, id);
-      }
-      const saved = [];
-      for (let i = 0; i < criteria.length; i++) {
-        const c = criteria[i];
-        if (!c.name.trim()) continue;
-        const payload = {
-          name: c.name,
-          description: c.description,
-          weight: c.weight,
-          order_index: i + 1,
-        };
-        if (isDraftId(c.id)) {
-          const created = await api.criteria.create(roleId, {
-            ...payload,
-            source: c.source || "manual",
-          });
-          saved.push(created);
-        } else {
-          const updated = await api.criteria.update(roleId, c.id, payload);
-          saved.push(updated);
-        }
-      }
-      setCriteria(saved);
-      setRemovedIds([]);
-      setStatusMsg(`Saved ${saved.length} criteria.`);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -234,43 +122,12 @@ export default function RoleSetup() {
       )}
 
       {visibleTab === "criteria" && isExisting && (
-        <div className="criteria-tab-legacy">
-          <p className="hint">
-            Edit names, descriptions, and weights. Add manual criteria. Remove any that don't fit.
-          </p>
-          <div className="criteria-list">
-            {criteria.map((c, i) => (
-              <CriterionCard
-                key={c.id}
-                criterion={c}
-                onChange={(next) => handleChangeCriterion(i, next)}
-                onRemove={() => handleRemoveCriterion(i)}
-              />
-            ))}
-            {criteria.length === 0 && (
-              <p style={{ color: "#777" }}>
-                No criteria yet. Click <strong>Extract criteria</strong> to propose some from the
-                JD, or add one manually.
-              </p>
-            )}
-          </div>
-          <div className="form-actions">
-            <button onClick={handleAddManual} className="btn btn-secondary">
-              + Add criterion
-            </button>
-            <button
-              onClick={handleExtract}
-              disabled={extracting || !role?.job_description?.trim()}
-              className="btn btn-secondary"
-              title="Use the LLM to propose scoring criteria from the JD"
-            >
-              {extracting ? "Extracting…" : "Extract criteria"}
-            </button>
-            <button onClick={handleSaveCriteria} disabled={saving} className="btn btn-primary">
-              {saving ? "Saving…" : "Save criteria"}
-            </button>
-          </div>
-        </div>
+        <CriteriaTab
+          roleId={roleId}
+          jobDescription={role?.job_description}
+          onStatus={setStatusMsg}
+          onError={setError}
+        />
       )}
 
       {visibleTab === "resumes" && isExisting && (

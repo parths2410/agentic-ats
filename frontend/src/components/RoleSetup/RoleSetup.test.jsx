@@ -152,7 +152,7 @@ describe("RoleSetup — Basics tab (existing role)", () => {
 
   it("preserves the current tab via the URL ?tab= param", async () => {
     renderAt("/roles/r1?tab=criteria");
-    await screen.findByText(/edit names, descriptions, and weights/i);
+    await screen.findByText("No criteria yet");
     expect(screen.getByRole("tab", { name: "Criteria" })).toHaveAttribute("aria-selected", "true");
   });
 
@@ -164,7 +164,7 @@ describe("RoleSetup — Basics tab (existing role)", () => {
 });
 
 
-describe("RoleSetup — Criteria tab (legacy contents pending step 3)", () => {
+describe("RoleSetup — Criteria tab integration", () => {
   beforeEach(() => {
     vi.spyOn(api.roles, "get").mockResolvedValue({
       id: "r1",
@@ -197,22 +197,17 @@ describe("RoleSetup — Criteria tab (legacy contents pending step 3)", () => {
 
   it("renders existing criteria when the Criteria tab is selected", async () => {
     renderAt("/roles/r1?tab=criteria");
-    await screen.findByDisplayValue("py");
+    await screen.findByDisplayValue("Python");
+    expect(screen.getByDisplayValue("py")).toBeInTheDocument();
   });
 
-  it("Extract appends proposed criteria", async () => {
-    const user = userEvent.setup();
+  it("renders the empty hero when there are no criteria", async () => {
+    api.criteria.list.mockResolvedValueOnce([]);
     renderAt("/roles/r1?tab=criteria");
-    await screen.findByDisplayValue("py");
-    await user.click(screen.getByRole("button", { name: /extract criteria/i }));
-    await screen.findByDisplayValue("Leadership");
-  });
-
-  it("Save criteria iterates create/update", async () => {
-    const user = userEvent.setup();
-    renderAt("/roles/r1?tab=criteria");
-    await screen.findByDisplayValue("py");
-    await user.click(screen.getByRole("button", { name: /save criteria/i }));
-    await waitFor(() => expect(api.criteria.update).toHaveBeenCalled());
+    await screen.findByText("No criteria yet");
+    expect(
+      screen.getByRole("button", { name: /extract from job description/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add manually/i })).toBeInTheDocument();
   });
 });
