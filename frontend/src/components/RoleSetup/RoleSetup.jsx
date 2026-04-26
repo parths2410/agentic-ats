@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../../services/api.js";
+import BasicsTab from "./BasicsTab.jsx";
 import CriterionCard from "./CriterionCard.jsx";
 import UploadZone from "./UploadZone.jsx";
 import useProgress from "../../hooks/useProgress.js";
+
+const TABS = ["basics", "criteria", "resumes"];
 
 function makeDraftId() {
   return `draft-${Math.random().toString(36).slice(2, 10)}`;
@@ -16,10 +19,10 @@ function isDraftId(id) {
 export default function RoleSetup() {
   const { roleId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isExisting = Boolean(roleId);
 
-  const [title, setTitle] = useState("");
-  const [jobDescription, setJobDescription] = useState("");
+  const [role, setRole] = useState(null);
   const [criteria, setCriteria] = useState([]);
   const [removedIds, setRemovedIds] = useState([]);
 
@@ -29,14 +32,26 @@ export default function RoleSetup() {
   const [error, setError] = useState(null);
   const [statusMsg, setStatusMsg] = useState(null);
 
+  const requestedTab = searchParams.get("tab") || "basics";
+  const activeTab = TABS.includes(requestedTab) ? requestedTab : "basics";
+  const lockedTab = !isExisting && activeTab !== "basics";
+  const visibleTab = lockedTab ? "basics" : activeTab;
+
+  function selectTab(tab) {
+    if (!isExisting && tab !== "basics") return;
+    const next = new URLSearchParams(searchParams);
+    if (tab === "basics") next.delete("tab");
+    else next.set("tab", tab);
+    setSearchParams(next, { replace: true });
+  }
+
   useEffect(() => {
     if (!isExisting) return;
     let cancelled = false;
     Promise.all([api.roles.get(roleId), api.criteria.list(roleId)])
-      .then(([role, crits]) => {
+      .then(([roleData, crits]) => {
         if (cancelled) return;
-        setTitle(role.title);
-        setJobDescription(role.job_description);
+        setRole(roleData);
         setCriteria(crits);
       })
       .catch((err) => !cancelled && setError(err.message))
@@ -46,23 +61,17 @@ export default function RoleSetup() {
     };
   }, [roleId, isExisting]);
 
-  async function handleSaveRole() {
+  async function handleSaveBasics({ title, job_description }) {
     setError(null);
     setStatusMsg(null);
-    if (!title.trim()) {
-      setError("Title is required");
-      return;
-    }
     setSaving(true);
     try {
       if (isExisting) {
-        await api.roles.update(roleId, { title, job_description: jobDescription });
-        setStatusMsg("Role saved.");
+        const updated = await api.roles.update(roleId, { title, job_description });
+        setRole((prev) => ({ ...(prev || {}), ...updated, title, job_description }));
+        setStatusMsg("Saved.");
       } else {
-        const created = await api.roles.create({
-          title,
-          job_description: jobDescription,
-        });
+        const created = await api.roles.create({ title, job_description });
         navigate(`/roles/${created.id}`, { replace: true });
       }
     } catch (err) {
@@ -75,18 +84,12 @@ export default function RoleSetup() {
   async function handleExtract() {
     setError(null);
     setStatusMsg(null);
-    if (!isExisting) {
-      setError("Save the role first, then extract criteria.");
-      return;
-    }
-    if (!jobDescription.trim()) {
-      setError("Add a job description first.");
+    if (!isExisting || !role?.job_description?.trim()) {
+      setError("Add a job description in Basics first.");
       return;
     }
     setExtracting(true);
     try {
-      // Persist the latest JD before asking the LLM to read it.
-      await api.roles.update(roleId, { title, job_description: jobDescription });
       const { proposals } = await api.criteria.extract(roleId);
       const drafts = proposals.map((p) => ({
         id: makeDraftId(),
@@ -138,10 +141,6 @@ export default function RoleSetup() {
   async function handleSaveCriteria() {
     setError(null);
     setStatusMsg(null);
-    if (!isExisting) {
-      setError("Save the role first.");
-      return;
-    }
     setSaving(true);
     try {
       for (const id of removedIds) {
@@ -178,21 +177,44 @@ export default function RoleSetup() {
     }
   }
 
-  // Progress indicator for any uploads-in-progress on this role.
   const { batch } = useProgress(isExisting ? roleId : null);
 
-  if (loading) return <p>Loading role…</p>;
+  if (loading) return <p className="roles-state">Loading role…</p>;
+
+  const headerTitle = isExisting ? role?.title || "Untitled role" : "New role";
 
   return (
     <section className="role-setup">
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1>{isExisting ? "Edit Role" : "New Role"}</h1>
+      <header className="setup-header">
+        <h1 className="setup-title">{headerTitle}</h1>
         {isExisting && (
-          <Link to={`/roles/${roleId}/workspace`} className="btn btn-primary">
-            Open Workspace →
+          <Link to={`/roles/${roleId}/workspace`} className="setup-workspace-link">
+            Open workspace →
           </Link>
         )}
       </header>
+
+      <nav className="tab-strip" role="tablist" aria-label="Role setup sections">
+        {TABS.map((tab) => {
+          const locked = !isExisting && tab !== "basics";
+          const isActive = visibleTab === tab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              aria-disabled={locked}
+              className={`tab${isActive ? " active" : ""}${locked ? " locked" : ""}`}
+              onClick={() => selectTab(tab)}
+              title={locked ? "Save the role first" : undefined}
+              disabled={locked}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          );
+        })}
+      </nav>
 
       {error && <p className="error">Error: {error}</p>}
       {statusMsg && <p className="status">{statusMsg}</p>}
@@ -202,53 +224,20 @@ export default function RoleSetup() {
         </p>
       )}
 
-      <div className="form-group">
-        <label htmlFor="title">Title</label>
-        <input
-          id="title"
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g., Senior Backend Engineer"
+      {visibleTab === "basics" && (
+        <BasicsTab
+          role={role}
+          isExisting={isExisting}
+          saving={saving}
+          onSave={handleSaveBasics}
         />
-      </div>
+      )}
 
-      <div className="form-group">
-        <label htmlFor="jd">Job Description</label>
-        <textarea
-          id="jd"
-          value={jobDescription}
-          onChange={(e) => setJobDescription(e.target.value)}
-          placeholder="Paste the full job description here…"
-          rows={12}
-        />
-      </div>
-
-      <div className="form-actions">
-        <button onClick={handleSaveRole} disabled={saving} className="btn btn-primary">
-          {saving ? "Saving…" : isExisting ? "Save Role" : "Create Role"}
-        </button>
-        {isExisting && (
-          <button
-            onClick={handleExtract}
-            disabled={extracting || !jobDescription.trim()}
-            className="btn btn-secondary"
-            title="Use the LLM to propose scoring criteria from the JD"
-          >
-            {extracting ? "Extracting…" : "Extract Criteria"}
-          </button>
-        )}
-      </div>
-
-      {isExisting && (
-        <>
-          <header style={{ marginTop: "2rem" }}>
-            <h2>Scoring Criteria</h2>
-            <p className="hint">
-              Edit names, descriptions, and weights. Add manual criteria. Remove any that don't fit.
-            </p>
-          </header>
-
+      {visibleTab === "criteria" && isExisting && (
+        <div className="criteria-tab-legacy">
+          <p className="hint">
+            Edit names, descriptions, and weights. Add manual criteria. Remove any that don't fit.
+          </p>
           <div className="criteria-list">
             {criteria.map((c, i) => (
               <CriterionCard
@@ -260,34 +249,41 @@ export default function RoleSetup() {
             ))}
             {criteria.length === 0 && (
               <p style={{ color: "#777" }}>
-                No criteria yet. Click <strong>Extract Criteria</strong> to propose some from the
+                No criteria yet. Click <strong>Extract criteria</strong> to propose some from the
                 JD, or add one manually.
               </p>
             )}
           </div>
-
           <div className="form-actions">
             <button onClick={handleAddManual} className="btn btn-secondary">
-              + Add Criterion
+              + Add criterion
             </button>
             <button
-              onClick={handleSaveCriteria}
-              disabled={saving}
-              className="btn btn-primary"
+              onClick={handleExtract}
+              disabled={extracting || !role?.job_description?.trim()}
+              className="btn btn-secondary"
+              title="Use the LLM to propose scoring criteria from the JD"
             >
-              {saving ? "Saving…" : "Save Criteria"}
+              {extracting ? "Extracting…" : "Extract criteria"}
+            </button>
+            <button onClick={handleSaveCriteria} disabled={saving} className="btn btn-primary">
+              {saving ? "Saving…" : "Save criteria"}
             </button>
           </div>
+        </div>
+      )}
 
-          <header style={{ marginTop: "2.5rem" }}>
-            <h2>Resumes</h2>
-            <p className="hint">
-              Upload PDF resumes. Parsing and scoring run in the background — open
-              the Workspace to watch the ranked list build up.
-            </p>
-          </header>
-          <UploadZone roleId={roleId} onUploaded={() => setStatusMsg("Upload accepted. Processing started.")} />
-        </>
+      {visibleTab === "resumes" && isExisting && (
+        <div className="resumes-tab-legacy">
+          <p className="hint">
+            Upload PDF resumes. Parsing and scoring run in the background — open the workspace to
+            watch the ranked list build up.
+          </p>
+          <UploadZone
+            roleId={roleId}
+            onUploaded={() => setStatusMsg("Upload accepted. Processing started.")}
+          />
+        </div>
       )}
     </section>
   );

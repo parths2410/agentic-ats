@@ -156,29 +156,105 @@ h2 { margin: 0; font-size: 1.2rem; }
   margin: 0;
 }
 
-/* Role setup form */
-.role-setup .form-group {
-  margin-top: 1rem;
+/* Role setup — sticky page header */
+.setup-header {
+  position: sticky;
+  top: 0;
+  z-index: 11;
+  background: #f7f7f8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem 0 1rem;
+  margin: -1.5rem 0 0;
+}
+.setup-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.setup-workspace-link {
+  color: #0066cc;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.setup-workspace-link:hover { text-decoration: underline; }
+
+/* Tab strip */
+.tab-strip {
+  position: sticky;
+  top: 4.5rem;
+  z-index: 10;
+  background: #f7f7f8;
+  display: flex;
+  gap: 1.75rem;
+  border-bottom: 1px solid #ececec;
+  margin: 0 0 1.25rem;
+  padding: 0;
+}
+.tab-strip .tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.75rem 0;
+  margin-bottom: -1px;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #888;
+  cursor: pointer;
+}
+.tab-strip .tab:hover:not(.locked):not(.active) { color: #555; }
+.tab-strip .tab.active {
+  color: #1a1a1a;
+  border-bottom-color: #1a1a1a;
+}
+.tab-strip .tab.locked {
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Basics tab form */
+.basics-tab { display: flex; flex-direction: column; gap: 1.5rem; padding-top: 0.5rem; }
+.basics-tab .field {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.5rem;
 }
-.role-setup label { font-weight: 500; color: #444; }
-.role-setup input[type="text"],
-.role-setup textarea {
-  padding: 0.6rem 0.75rem;
-  border: 1px solid #d0d0d0;
+.basics-tab label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #555;
+}
+.basics-tab input[type="text"],
+.basics-tab textarea {
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #e0e0e0;
   border-radius: 6px;
   font: inherit;
   background: #fff;
   width: 100%;
 }
-.role-setup textarea { resize: vertical; min-height: 5rem; font-family: inherit; }
-.role-setup input[type="text"]:focus,
-.role-setup textarea:focus {
+.basics-tab textarea { resize: vertical; min-height: 12rem; font-family: inherit; line-height: 1.5; }
+.basics-tab input[type="text"]:focus,
+.basics-tab textarea:focus {
   outline: 2px solid #99c8f5;
   border-color: #0066cc;
 }
+.basics-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
 .form-actions {
   display: flex;
   gap: 0.5rem;
