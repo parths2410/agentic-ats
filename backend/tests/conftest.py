@@ -26,7 +26,7 @@ def engine():
         poolclass=StaticPool,
     )
     # Import models so they register with Base.metadata.
-    from app.models import candidate, chat, criterion, role  # noqa: F401
+    from app.models import candidate, chat, criterion, role, ui_state  # noqa: F401
 
     Base.metadata.create_all(bind=eng)
     yield eng

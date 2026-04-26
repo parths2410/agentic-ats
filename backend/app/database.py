@@ -26,7 +26,7 @@ def get_db():
 
 def init_db() -> None:
     # Import models so they register with Base.metadata before create_all.
-    from app.models import role, criterion, candidate, chat  # noqa: F401
+    from app.models import role, criterion, candidate, chat, ui_state  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
     _apply_inplace_migrations()
