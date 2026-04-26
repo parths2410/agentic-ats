@@ -1,8 +1,16 @@
+import asyncio
 import json
+import logging
 import re
-from typing import Any
+from typing import Any, Awaitable, Callable, TypeVar
 
-from anthropic import AsyncAnthropic
+from anthropic import (
+    APIConnectionError,
+    APIStatusError,
+    AsyncAnthropic,
+    InternalServerError,
+    RateLimitError,
+)
 from pydantic import ValidationError
 
 from app.config import settings
@@ -21,6 +29,62 @@ from app.llm.prompts.score_candidate import (
 )
 from app.llm.types import LLMMessage, LLMResponse, ToolCall
 from app.schemas.criterion import CriterionProposal
+
+
+logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
+
+# Errors that are usually transient — retrying with backoff has a real chance
+# of succeeding. Authentication errors, schema mismatches, etc. should not
+# retry.
+_RETRYABLE_EXCEPTIONS = (
+    RateLimitError,
+    APIConnectionError,
+    InternalServerError,
+)
+
+
+async def _with_retry(
+    op: Callable[[], Awaitable[T]],
+    *,
+    attempts: int = 3,
+    initial_delay: float = 0.5,
+    max_delay: float = 8.0,
+) -> T:
+    """Retry `op` up to `attempts` times with exponential backoff for the
+    transient API errors above. Re-raises on the last attempt."""
+    delay = initial_delay
+    last_exc: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return await op()
+        except _RETRYABLE_EXCEPTIONS as e:
+            last_exc = e
+            if attempt == attempts:
+                break
+            logger.warning(
+                "LLM call attempt %d/%d failed (%s); retrying in %.1fs",
+                attempt, attempts, type(e).__name__, delay,
+            )
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, max_delay)
+        except APIStatusError as e:
+            # 5xx is worth retrying; everything else (400/401/403) bails out
+            # immediately.
+            status = getattr(e, "status_code", 0) or 0
+            if status >= 500 and attempt < attempts:
+                last_exc = e
+                logger.warning(
+                    "LLM API %s on attempt %d/%d; retrying in %.1fs",
+                    status, attempt, attempts, delay,
+                )
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, max_delay)
+                continue
+            raise
+    assert last_exc is not None
+    raise last_exc
 
 
 class LLMResponseError(Exception):
@@ -58,7 +122,7 @@ class AnthropicProvider(LLMProvider):
         if not job_description.strip():
             return []
 
-        message = await self._client.messages.create(
+        message = await _with_retry(lambda: self._client.messages.create(
             model=self._model,
             max_tokens=2048,
             system=EXTRACT_CRITERIA_SYSTEM,
@@ -68,7 +132,7 @@ class AnthropicProvider(LLMProvider):
                     "content": build_extract_criteria_user_prompt(job_description),
                 }
             ],
-        )
+        ))
 
         text_parts = [block.text for block in message.content if getattr(block, "type", None) == "text"]
         raw = "".join(text_parts).strip()
@@ -106,12 +170,12 @@ class AnthropicProvider(LLMProvider):
         return [p for p in proposals if p.name]
 
     async def _call_json(self, system: str, user: str, max_tokens: int = 4096) -> Any:
-        message = await self._client.messages.create(
+        message = await _with_retry(lambda: self._client.messages.create(
             model=self._model,
             max_tokens=max_tokens,
             system=system,
             messages=[{"role": "user", "content": user}],
-        )
+        ))
         text_parts = [
             block.text for block in message.content if getattr(block, "type", None) == "text"
         ]
@@ -205,13 +269,13 @@ class AnthropicProvider(LLMProvider):
         system_prompt: str,
     ) -> LLMResponse:
         anthropic_messages = self._to_anthropic_messages(messages)
-        message = await self._client.messages.create(
+        message = await _with_retry(lambda: self._client.messages.create(
             model=self._model,
             max_tokens=2048,
             system=system_prompt,
             tools=tools or None,
             messages=anthropic_messages,
-        )
+        ))
         return self._parse_chat_response(message)
 
     @staticmethod
