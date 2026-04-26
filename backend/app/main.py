@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import candidates, criteria, health, roles, scoring, websocket
+from app.api import candidates, chat, criteria, health, roles, scoring, websocket
 from app.config import settings
 from app.database import init_db
 
@@ -29,4 +29,5 @@ app.include_router(roles.router, prefix="/api")
 app.include_router(criteria.router, prefix="/api")
 app.include_router(candidates.router, prefix="/api")
 app.include_router(scoring.router, prefix="/api")
+app.include_router(chat.router, prefix="/api")
 app.include_router(websocket.router)
