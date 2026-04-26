@@ -22,6 +22,10 @@ frontend/dist/
 backend/.coverage
 backend/htmlcov/
 frontend/coverage/
-docs/coverage/
+docs/coverage/**/*.html
+docs/coverage/**/*.png
+docs/coverage/**/*.js
+docs/coverage/**/*.css
+docs/coverage/**/*.json
 
 
