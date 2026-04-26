@@ -1,12 +1,52 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { api } from "../../services/api.js";
+
+function PencilIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
 
 export default function RoleList() {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     let cancelled = false;
@@ -37,41 +77,54 @@ export default function RoleList() {
   }
 
   return (
-    <section>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1>Roles</h1>
-        <button onClick={() => navigate("/roles/new")} className="btn btn-primary">
-          + New Role
-        </button>
+    <section className="roles-page">
+      <header className="roles-page-header">
+        <h1 className="roles-page-title">Roles</h1>
+        <Link to="/roles/new" className="btn btn-primary">
+          + New role
+        </Link>
       </header>
 
-      {loading && <p>Loading roles…</p>}
+      {loading && <p className="roles-state">Loading roles…</p>}
       {error && <p className="error">Error: {error}</p>}
+
       {!loading && !error && roles.length === 0 && (
-        <p style={{ color: "#777" }}>
-          No roles yet. <Link to="/roles/new">Create your first role</Link>.
-        </p>
+        <div className="roles-empty">
+          <p className="roles-empty-title">No roles yet</p>
+          <Link to="/roles/new" className="btn btn-primary">
+            + Create your first role
+          </Link>
+        </div>
       )}
 
       {roles.length > 0 && (
-        <ul className="role-list">
+        <ul className="roles-list">
           {roles.map((r) => (
-            <li key={r.id} className="role-card">
-              <div>
-                <Link to={`/roles/${r.id}`} className="role-title">
-                  {r.title}
-                </Link>
-                <div className="role-meta">
+            <li key={r.id} className="role-row">
+              <Link to={`/roles/${r.id}/workspace`} className="role-row-body">
+                <div className="role-row-title">{r.title}</div>
+                <div className="role-row-meta">
                   {r.criteria_count} criteria · {r.candidate_count} candidates · created{" "}
                   {new Date(r.created_at).toLocaleDateString()}
                 </div>
-              </div>
-              <div className="role-actions">
-                <Link to={`/roles/${r.id}`} className="btn btn-secondary">
-                  Open
+              </Link>
+              <div className="role-row-actions">
+                <Link
+                  to={`/roles/${r.id}`}
+                  className="role-row-icon-btn"
+                  aria-label="Edit role"
+                  title="Edit role"
+                >
+                  <PencilIcon />
                 </Link>
-                <button onClick={() => handleDelete(r.id)} className="btn btn-danger">
-                  Delete
+                <button
+                  type="button"
+                  onClick={() => handleDelete(r.id)}
+                  className="role-row-icon-btn danger"
+                  aria-label="Delete role"
+                  title="Delete role"
+                >
+                  <TrashIcon />
                 </button>
               </div>
             </li>

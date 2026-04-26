@@ -70,21 +70,80 @@ h2 { margin: 0; font-size: 1.2rem; }
 .btn-danger:hover:not(:disabled) { background: #fdecea; }
 .btn-sm { padding: 0.2rem 0.5rem; font-size: 0.85rem; }
 
-/* Role list */
-.role-list { list-style: none; padding: 0; margin: 1.25rem 0 0; }
-.role-card {
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  margin-bottom: 0.75rem;
+/* Roles list page */
+.roles-page-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #f7f7f8;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 0 1.25rem;
+  margin: -1.5rem 0 0.5rem;
+  border-bottom: 1px solid #ececec;
 }
-.role-title { color: #0066cc; text-decoration: none; font-weight: 600; font-size: 1.05rem; }
-.role-meta { color: #777; font-size: 0.85rem; margin-top: 0.25rem; }
-.role-actions { display: flex; gap: 0.5rem; }
+.roles-page-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.roles-state { color: #888; padding: 1.5rem 0; }
+.roles-list { list-style: none; padding: 0; margin: 0; }
+.role-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 0.25rem;
+  border-bottom: 1px solid #ececec;
+}
+.role-row:last-child { border-bottom: none; }
+.role-row-body {
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.role-row-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 0.3rem;
+}
+.role-row-body:hover .role-row-title { color: #0066cc; }
+.role-row-meta { font-size: 0.85rem; color: #888; }
+.role-row-actions { display: flex; gap: 0.25rem; flex-shrink: 0; }
+.role-row-icon-btn {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: #aaa;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+.role-row-icon-btn:hover { background: #ececec; color: #333; }
+.role-row-icon-btn.danger:hover { background: #fdecea; color: #b3261e; }
+.roles-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6rem 1rem 4rem;
+  gap: 1.25rem;
+  text-align: center;
+}
+.roles-empty-title {
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: #555;
+  margin: 0;
+}
 
 /* Role setup form */
 .role-setup .form-group {
