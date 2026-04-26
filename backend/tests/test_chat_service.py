@@ -16,9 +16,10 @@ from app.services.chat_service import (
     ChatService,
     RoleNotFound,
     ToolInvocation,
+    UIMutationsAccumulator,
     _summarize,
 )
-from app.tools.registry import ToolRegistry
+from app.tools.registry import ToolRegistry, default_registry
 
 
 class _ScriptedLLM:
@@ -179,6 +180,104 @@ def test_summarize_handles_known_tools():
     assert "error" in _summarize("get_candidates", {"error": "x"})
     assert _summarize("unknown_tool", {}) == "unknown_tool: ok"
     assert _summarize("anything", "raw string") == "anything: ok"
+
+
+@pytest.mark.asyncio
+async def test_set_highlights_mutation_returned_in_chat_result(db, role, candidates):
+    llm = _ScriptedLLM([
+        LLMResponse(
+            text="",
+            tool_calls=[
+                ToolCall(id="t1", name="set_highlights", arguments={"candidate_ids": [candidates[0].id]}),
+            ],
+            stop_reason="tool_use",
+        ),
+        LLMResponse(text="Highlighted Ada"),
+    ])
+    svc = ChatService(db, llm, registry=default_registry())
+    out = await svc.handle_message(role.id, "Highlight Ada")
+    assert out.ui_mutations is not None
+    assert out.ui_mutations["highlights"]["add"] == [candidates[0].id]
+
+
+@pytest.mark.asyncio
+async def test_set_sort_mutation_returned(db, role, candidates):
+    llm = _ScriptedLLM([
+        LLMResponse(
+            text="",
+            tool_calls=[ToolCall(id="t1", name="set_sort",
+                                 arguments={"field": "Python", "order": "desc"})],
+            stop_reason="tool_use",
+        ),
+        LLMResponse(text="Sorted by Python"),
+    ])
+    svc = ChatService(db, llm, registry=default_registry())
+    out = await svc.handle_message(role.id, "Sort by python")
+    assert out.ui_mutations["re_sort"] == {"field": "Python", "order": "desc"}
+
+
+@pytest.mark.asyncio
+async def test_reset_ui_supersedes_prior_actions(db, role, candidates):
+    llm = _ScriptedLLM([
+        LLMResponse(
+            text="",
+            tool_calls=[
+                ToolCall(id="t1", name="set_highlights",
+                         arguments={"candidate_ids": [candidates[0].id]}),
+                ToolCall(id="t2", name="reset_ui", arguments={}),
+            ],
+            stop_reason="tool_use",
+        ),
+        LLMResponse(text="Reset"),
+    ])
+    svc = ChatService(db, llm, registry=default_registry())
+    out = await svc.handle_message(role.id, "Reset")
+    assert out.ui_mutations == {"reset": True}
+
+
+@pytest.mark.asyncio
+async def test_data_only_tool_does_not_emit_mutations(db, role, candidates):
+    llm = _ScriptedLLM([
+        LLMResponse(
+            text="",
+            tool_calls=[ToolCall(id="t1", name="get_candidates", arguments={})],
+            stop_reason="tool_use",
+        ),
+        LLMResponse(text="Top: Ada"),
+    ])
+    svc = ChatService(db, llm, registry=default_registry())
+    out = await svc.handle_message(role.id, "Top?")
+    assert out.ui_mutations is None
+
+
+def test_ui_mutations_accumulator_add_then_remove_same_id():
+    acc = UIMutationsAccumulator()
+    acc.merge({"type": "set_highlights", "add": ["a"], "remove": []})
+    acc.merge({"type": "set_highlights", "add": [], "remove": ["a"]})
+    out = acc.to_dict()
+    # Net effect: a is in remove, not in add.
+    assert out["highlights"]["add"] == []
+    assert out["highlights"]["remove"] == ["a"]
+
+
+def test_ui_mutations_accumulator_clear():
+    acc = UIMutationsAccumulator()
+    acc.merge({"type": "set_highlights", "add": ["a"], "remove": []})
+    acc.merge({"type": "clear_highlights"})
+    out = acc.to_dict()
+    assert out == {"clear_highlights": True}
+
+
+def test_ui_mutations_accumulator_sort_last_write_wins():
+    acc = UIMutationsAccumulator()
+    acc.merge({"type": "set_sort", "field": "Python", "order": "asc"})
+    acc.merge({"type": "set_sort", "field": "aggregate", "order": "desc"})
+    assert acc.to_dict()["re_sort"] == {"field": "aggregate", "order": "desc"}
+
+
+def test_ui_mutations_accumulator_no_changes_returns_empty_dict():
+    assert UIMutationsAccumulator().to_dict() == {}
+    assert UIMutationsAccumulator().has_changes is False
 
 
 @pytest.mark.asyncio

@@ -12,12 +12,20 @@ from typing import Iterable
 
 
 _BEHAVIOR_RULES = """Behavioral rules:
-- When asked to highlight, filter, or shortlist candidates, use the action
-  tools (set_highlights, set_sort) — they are additive and "soft". Never
-  claim to remove or hide candidates; only highlight matches.
-- For filter chaining ("from those…", "of these…"), call get_ui_state first
-  to see currently highlighted ids, then intersect with your new search
-  result before calling set_highlights.
+- When asked to highlight, filter, or shortlist candidates, call
+  set_highlights with the matching candidate ids. Highlights are additive
+  and "soft" — never claim to remove or hide candidates, only highlight
+  matches.
+- For filter chaining ("from those…", "of these…"), FIRST call get_ui_state
+  to read the currently highlighted ids. Then run your new search. Then
+  call set_highlights with the INTERSECTION of the existing highlights and
+  the new matches. (If nothing is currently highlighted, treat the chain
+  the same as a fresh filter.)
+- For "remove from highlights" or "un-highlight" requests, use
+  remove_highlights. To start over, use clear_highlights or reset_ui.
+- For sort requests ("sort by X", "rank by X"), call set_sort. Use
+  "aggregate" for the weighted aggregate score, otherwise pass a criterion
+  name verbatim.
 - For statistics, prefer compute_stats over fetching all candidates and
   counting by hand.
 - For deep-dive questions about one candidate, fetch raw resume text — the

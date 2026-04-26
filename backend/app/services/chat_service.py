@@ -33,23 +33,90 @@ from app.models.candidate import Candidate
 from app.models.chat import ChatMessage
 from app.models.criterion import Criterion
 from app.models.role import Role
+from app.tools.definitions import ACTION_TOOL_NAMES
 from app.tools.registry import ToolRegistry, default_registry
 
 logger = logging.getLogger(__name__)
 
 MAX_ITERATIONS = 5
 
-# Tool names whose execution should never trigger UI mutations even after M4
-# adds action tools. (Just data tools right now.)
-DATA_ONLY_TOOLS: frozenset[str] = frozenset({
-    "get_candidates",
-    "get_candidate_detail",
-    "get_candidate_raw_text",
-    "get_candidate_scores",
-    "search_candidates",
-    "compute_stats",
-    "get_ui_state",
-})
+class UIMutationsAccumulator:
+    """Folds individual action-tool mutations into a single payload.
+
+    Highlight semantics: `add` and `remove` are net sets — if the LLM
+    highlights c1 then removes c1 in the same turn, c1 ends up in `remove`.
+    Sort and reset are last-write-wins.
+    """
+
+    def __init__(self) -> None:
+        self.add: list[str] = []
+        self.remove: list[str] = []
+        self._add_set: set[str] = set()
+        self._remove_set: set[str] = set()
+        self.sort_field: str | None = None
+        self.sort_order: str | None = None
+        self.cleared: bool = False
+        self.reset: bool = False
+
+    @property
+    def has_changes(self) -> bool:
+        return bool(
+            self.add
+            or self.remove
+            or self.sort_field is not None
+            or self.cleared
+            or self.reset
+        )
+
+    def merge(self, mutation: dict[str, Any]) -> None:
+        mtype = mutation.get("type")
+        if mtype == "set_highlights":
+            for cid in mutation.get("add") or []:
+                cid = str(cid)
+                if cid in self._remove_set:
+                    self._remove_set.discard(cid)
+                    self.remove = [c for c in self.remove if c != cid]
+                if cid not in self._add_set:
+                    self._add_set.add(cid)
+                    self.add.append(cid)
+            for cid in mutation.get("remove") or []:
+                cid = str(cid)
+                if cid in self._add_set:
+                    self._add_set.discard(cid)
+                    self.add = [c for c in self.add if c != cid]
+                if cid not in self._remove_set:
+                    self._remove_set.add(cid)
+                    self.remove.append(cid)
+        elif mtype == "clear_highlights":
+            self.add = []
+            self.remove = []
+            self._add_set.clear()
+            self._remove_set.clear()
+            self.cleared = True
+        elif mtype == "set_sort":
+            self.sort_field = mutation.get("field")
+            self.sort_order = mutation.get("order") or "desc"
+        elif mtype == "reset_ui":
+            self.add = []
+            self.remove = []
+            self._add_set.clear()
+            self._remove_set.clear()
+            self.sort_field = None
+            self.sort_order = None
+            self.reset = True
+            self.cleared = False  # reset supersedes clear
+
+    def to_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        if self.reset:
+            out["reset"] = True
+        elif self.cleared:
+            out["clear_highlights"] = True
+        if self.add or self.remove:
+            out["highlights"] = {"add": self.add, "remove": self.remove}
+        if self.sort_field is not None:
+            out["re_sort"] = {"field": self.sort_field, "order": self.sort_order or "desc"}
+        return out
 
 
 class RoleNotFound(Exception):
@@ -154,6 +221,7 @@ class ChatService:
         tool_definitions = self.registry.definitions()
 
         invocations: list[ToolInvocation] = []
+        mutations = UIMutationsAccumulator()
         truncated = False
         last_response: LLMResponse | None = None
         iterations = 0
@@ -192,6 +260,12 @@ class ChatService:
                         summary=summary,
                     )
                 )
+                if (
+                    call.name in ACTION_TOOL_NAMES
+                    and isinstance(result, dict)
+                    and isinstance(result.get("mutation"), dict)
+                ):
+                    mutations.merge(result["mutation"])
                 history.append(
                     LLMMessage(
                         role="tool",
@@ -210,13 +284,15 @@ class ChatService:
             else ""
         )
 
+        ui_mutations_payload = mutations.to_dict() if mutations.has_changes else None
+
         # Persist assistant message.
         self.db.add(
             ChatMessage(
                 role_id=role_id,
                 role_enum="assistant",
                 content=final_text,
-                ui_mutations=None,
+                ui_mutations=ui_mutations_payload,
             )
         )
         self.db.commit()
@@ -224,7 +300,7 @@ class ChatService:
         return ChatTurnResult(
             text=final_text,
             invocations=invocations,
-            ui_mutations=None,
+            ui_mutations=ui_mutations_payload,
             iterations=iterations,
             truncated=truncated,
         )
@@ -249,7 +325,12 @@ class ChatService:
         on_tool_status: Callable[[dict[str, Any]], Awaitable[None]] | None,
         iteration: int,
     ) -> list[tuple[Any, str | None]]:
-        async def run(call: ToolCall) -> tuple[Any, str | None]:
+        # Serialize tool execution: action tools mutate UI state via the
+        # shared session, and parallel writers would race on commit. Tool
+        # calls are short, so the parallelism savings aren't worth the
+        # session-management cost.
+        results: list[tuple[Any, str | None]] = []
+        for call in calls:
             if on_tool_status:
                 await on_tool_status({
                     "type": "tool_status",
@@ -273,9 +354,8 @@ class ChatService:
                     "status": "complete",
                     "summary": summary,
                 })
-            return result, summary
-
-        return await asyncio.gather(*(run(c) for c in calls))
+            results.append((result, summary))
+        return results
 
 
 def _summarize(name: str, result: Any) -> str:
