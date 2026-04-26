@@ -5,24 +5,18 @@ body {
   background: #f7f7f8;
   color: #1a1a1a;
 }
-nav {
-  display: flex;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  background: #fff;
-  border-bottom: 1px solid #e5e5e5;
-  align-items: center;
-}
-nav a {
-  color: #555;
-  text-decoration: none;
-  font-weight: 500;
-}
-nav a.active { color: #0066cc; }
 main {
   padding: 1.5rem;
   max-width: 1100px;
   margin: 0 auto;
+}
+.app-footer {
+  max-width: 1100px;
+  margin: 2rem auto 1rem;
+  padding: 0 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  color: #999;
 }
 
 h1 { margin: 0; font-size: 1.6rem; }

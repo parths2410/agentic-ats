@@ -13,14 +13,21 @@ afterEach(() => vi.restoreAllMocks());
 
 
 describe("App", () => {
-  it("renders nav and the role list landing page", async () => {
-    render(<MemoryRouter><App /></MemoryRouter>);
-    expect(screen.getByRole("link", { name: "Roles" })).toBeInTheDocument();
+  it("renders the role list landing page without a top nav", async () => {
+    const { container } = render(<MemoryRouter><App /></MemoryRouter>);
+    expect(container.querySelector("nav")).toBeNull();
     expect(screen.getByRole("heading", { name: "Roles" })).toBeInTheDocument();
-    await screen.findByText(/backend: ok/);
   });
 
-  it("renders error state when health fails", async () => {
+  it("renders the health badge in the footer", async () => {
+    const { container } = render(<MemoryRouter><App /></MemoryRouter>);
+    const footer = container.querySelector("footer.app-footer");
+    expect(footer).not.toBeNull();
+    const badge = await screen.findByText(/backend: ok/);
+    expect(footer.contains(badge)).toBe(true);
+  });
+
+  it("renders an error state in the footer when health fails", async () => {
     api.health.mockRejectedValueOnce(new Error("down"));
     render(<MemoryRouter><App /></MemoryRouter>);
     await screen.findByText(/backend: down/);
