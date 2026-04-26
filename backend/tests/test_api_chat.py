@@ -64,3 +64,35 @@ def test_delete_history_clears_messages(client, session_factory, role):
     assert r.status_code == 204
     r2 = client.get(f"/api/roles/{role.id}/chat/history")
     assert r2.json() == {"messages": []}
+
+
+def test_get_ui_state_initial_empty(client, role):
+    r = client.get(f"/api/roles/{role.id}/chat/ui-state")
+    assert r.status_code == 200
+    assert r.json()["highlighted_candidate_ids"] == []
+
+
+def test_get_ui_state_unknown_role(client):
+    r = client.get("/api/roles/missing/chat/ui-state")
+    assert r.status_code == 404
+
+
+def test_reset_endpoint_clears_state(client, session_factory, role):
+    from app.services.ui_state_service import UIStateService
+
+    db = session_factory()
+    try:
+        UIStateService(db).set_sort(role.id, "Python", "desc")
+        UIStateService(db).add_highlights(role.id, ["a", "b"])
+    finally:
+        db.close()
+    r = client.post(f"/api/roles/{role.id}/chat/reset")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["highlighted_candidate_ids"] == []
+    assert body["current_sort_field"] is None
+
+
+def test_reset_unknown_role(client):
+    r = client.post("/api/roles/missing/chat/reset")
+    assert r.status_code == 404

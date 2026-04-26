@@ -5,6 +5,7 @@ from app.database import get_db
 from app.schemas.chat import ChatHistory, ChatMessageRead
 from app.services.chat_service import ChatService
 from app.services.role_service import RoleNotFound, RoleService
+from app.services.ui_state_service import UIStateService
 
 router = APIRouter(prefix="/roles/{role_id}/chat", tags=["chat"])
 
@@ -27,6 +28,20 @@ def get_history(role_id: str, db: Session = Depends(get_db)) -> ChatHistory:
 def delete_history(role_id: str, db: Session = Depends(get_db)) -> None:
     _ensure_role(role_id, db)
     ChatService(db, llm=_NoopLLM()).clear_history(role_id)
+
+
+@router.get("/ui-state")
+def get_ui_state(role_id: str, db: Session = Depends(get_db)) -> dict:
+    _ensure_role(role_id, db)
+    svc = UIStateService(db)
+    return svc.to_dict(svc.get_or_create(role_id))
+
+
+@router.post("/reset")
+def reset_ui(role_id: str, db: Session = Depends(get_db)) -> dict:
+    _ensure_role(role_id, db)
+    svc = UIStateService(db)
+    return svc.to_dict(svc.reset(role_id))
 
 
 # History endpoints don't actually need an LLM, but ChatService asks for one
