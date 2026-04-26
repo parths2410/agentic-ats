@@ -24,7 +24,6 @@ export default function App() {
       <nav>
         <NavLink to="/" end>Roles</NavLink>
         <NavLink to="/roles/new">New Role</NavLink>
-        <NavLink to="/workspace">Workspace</NavLink>
         <span style={{ marginLeft: "auto" }}>
           <HealthBadge />
         </span>
@@ -34,7 +33,7 @@ export default function App() {
           <Route path="/" element={<RoleList />} />
           <Route path="/roles/new" element={<RoleSetup />} />
           <Route path="/roles/:roleId" element={<RoleSetup />} />
-          <Route path="/workspace" element={<Workspace />} />
+          <Route path="/roles/:roleId/workspace" element={<Workspace />} />
         </Routes>
       </main>
     </>

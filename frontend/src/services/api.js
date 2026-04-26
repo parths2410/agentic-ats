@@ -45,4 +45,33 @@ export const api = {
     extract: (roleId) =>
       request(`/roles/${roleId}/criteria/extract`, { method: "POST" }),
   },
+
+  candidates: {
+    list: (roleId) => request(`/roles/${roleId}/candidates`),
+    get: (roleId, id) => request(`/roles/${roleId}/candidates/${id}`),
+    scores: (roleId, id) => request(`/roles/${roleId}/candidates/${id}/scores`),
+    delete: (roleId, id) =>
+      request(`/roles/${roleId}/candidates/${id}`, { method: "DELETE" }),
+    upload: (roleId, files) => {
+      const fd = new FormData();
+      for (const f of files) fd.append("files", f);
+      return request(`/roles/${roleId}/candidates/upload`, {
+        method: "POST",
+        body: fd,
+      });
+    },
+  },
+
+  scoring: {
+    rescore: (roleId) =>
+      request(`/roles/${roleId}/score`, { method: "POST" }),
+  },
+
+  ws: {
+    progress: (roleId) => {
+      const proto = window.location.protocol === "https:" ? "wss" : "ws";
+      const host = window.location.host; // vite proxies /ws to the backend
+      return new WebSocket(`${proto}://${host}/ws/roles/${roleId}/progress`);
+    },
+  },
 };

@@ -26,6 +26,8 @@ class Candidate(Base):
     pdf_blob: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     aggregate_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     role: Mapped["Role"] = relationship("Role", back_populates="candidates")  # noqa: F821

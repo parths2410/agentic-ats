@@ -1,5 +1,6 @@
 import json
 import re
+from typing import Any
 
 from anthropic import AsyncAnthropic
 from pydantic import ValidationError
@@ -9,6 +10,14 @@ from app.llm.base import LLMProvider
 from app.llm.prompts.extract_criteria import (
     SYSTEM_PROMPT as EXTRACT_CRITERIA_SYSTEM,
     build_user_prompt as build_extract_criteria_user_prompt,
+)
+from app.llm.prompts.parse_resume import (
+    SYSTEM_PROMPT as PARSE_RESUME_SYSTEM,
+    build_user_prompt as build_parse_resume_user_prompt,
+)
+from app.llm.prompts.score_candidate import (
+    SYSTEM_PROMPT as SCORE_CANDIDATE_SYSTEM,
+    build_user_prompt as build_score_candidate_user_prompt,
 )
 from app.schemas.criterion import CriterionProposal
 
@@ -94,3 +103,92 @@ class AnthropicProvider(LLMProvider):
                 continue
 
         return [p for p in proposals if p.name]
+
+    async def _call_json(self, system: str, user: str, max_tokens: int = 4096) -> Any:
+        message = await self._client.messages.create(
+            model=self._model,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+        text_parts = [
+            block.text for block in message.content if getattr(block, "type", None) == "text"
+        ]
+        raw = "".join(text_parts).strip()
+        if not raw:
+            raise LLMResponseError(
+                f"Empty response from LLM (stop_reason={message.stop_reason})."
+            )
+        json_str = _extract_json_object(raw)
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError as e:
+            raise LLMResponseError(
+                f"LLM did not return valid JSON (stop_reason={message.stop_reason}): {e}\n"
+                f"Raw: {raw[:500]}"
+            ) from e
+
+    async def parse_resume(self, raw_text: str) -> dict[str, Any]:
+        if not raw_text.strip():
+            raise LLMResponseError("Resume text is empty; cannot parse.")
+        payload = await self._call_json(
+            PARSE_RESUME_SYSTEM, build_parse_resume_user_prompt(raw_text), max_tokens=4096
+        )
+        if not isinstance(payload, dict):
+            raise LLMResponseError(
+                f"Expected resume profile object; got {type(payload).__name__}."
+            )
+        # Defensive defaults so downstream code can rely on shape.
+        payload.setdefault("name", None)
+        payload.setdefault("contact_info", {})
+        payload.setdefault("summary", None)
+        payload.setdefault("experiences", [])
+        payload.setdefault("education", [])
+        payload.setdefault("skills", [])
+        payload.setdefault("certifications", [])
+        payload.setdefault("confidence_scores", {})
+        return payload
+
+    async def score_candidate(
+        self,
+        profile: dict[str, Any],
+        job_description: str,
+        criteria: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        if not criteria:
+            return {"scores": [], "overall_summary": ""}
+        payload = await self._call_json(
+            SCORE_CANDIDATE_SYSTEM,
+            build_score_candidate_user_prompt(job_description, criteria, profile),
+            max_tokens=4096,
+        )
+        if not isinstance(payload, dict):
+            raise LLMResponseError(
+                f"Expected scoring object; got {type(payload).__name__}."
+            )
+        scores = payload.get("scores")
+        if not isinstance(scores, list):
+            raise LLMResponseError("Scoring response missing 'scores' list.")
+        cleaned: list[dict[str, Any]] = []
+        for item in scores:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("criterion_name", "")).strip()
+            if not name:
+                continue
+            try:
+                score_val = float(item.get("score", 0))
+            except (TypeError, ValueError):
+                continue
+            score_val = max(1.0, min(10.0, score_val))
+            cleaned.append(
+                {
+                    "criterion_name": name,
+                    "score": score_val,
+                    "rationale": str(item.get("rationale", "")).strip(),
+                }
+            )
+        return {
+            "scores": cleaned,
+            "overall_summary": str(payload.get("overall_summary", "")).strip(),
+        }

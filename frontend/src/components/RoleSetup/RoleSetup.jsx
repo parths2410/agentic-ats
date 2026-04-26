@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../services/api.js";
 import CriterionCard from "./CriterionCard.jsx";
+import UploadZone from "./UploadZone.jsx";
+import useProgress from "../../hooks/useProgress.js";
 
 function makeDraftId() {
   return `draft-${Math.random().toString(36).slice(2, 10)}`;
@@ -176,16 +178,29 @@ export default function RoleSetup() {
     }
   }
 
+  // Progress indicator for any uploads-in-progress on this role.
+  const { batch } = useProgress(isExisting ? roleId : null);
+
   if (loading) return <p>Loading role…</p>;
 
   return (
     <section className="role-setup">
-      <header>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h1>{isExisting ? "Edit Role" : "New Role"}</h1>
+        {isExisting && (
+          <Link to={`/roles/${roleId}/workspace`} className="btn btn-primary">
+            Open Workspace →
+          </Link>
+        )}
       </header>
 
       {error && <p className="error">Error: {error}</p>}
       {statusMsg && <p className="status">{statusMsg}</p>}
+      {batch?.active && (
+        <p className="status">
+          Processing {batch.done}/{batch.total} resumes…
+        </p>
+      )}
 
       <div className="form-group">
         <label htmlFor="title">Title</label>
@@ -263,6 +278,15 @@ export default function RoleSetup() {
               {saving ? "Saving…" : "Save Criteria"}
             </button>
           </div>
+
+          <header style={{ marginTop: "2.5rem" }}>
+            <h2>Resumes</h2>
+            <p className="hint">
+              Upload PDF resumes. Parsing and scoring run in the background — open
+              the Workspace to watch the ranked list build up.
+            </p>
+          </header>
+          <UploadZone roleId={roleId} onUploaded={() => setStatusMsg("Upload accepted. Processing started.")} />
         </>
       )}
     </section>
