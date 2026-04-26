@@ -42,6 +42,26 @@ def test_inplace_migration_adds_status_and_error_columns(monkeypatch, tmp_path):
     assert "status" in cols and "error_message" in cols
 
 
+def test_inplace_migration_adds_stale_scores_column(monkeypatch, tmp_path):
+    from sqlalchemy import create_engine, text
+
+    db_file = tmp_path / "legacy2.db"
+    eng = create_engine(f"sqlite:///{db_file}", connect_args={"check_same_thread": False})
+    with eng.begin() as conn:
+        conn.execute(text(
+            "CREATE TABLE candidates ("
+            " id VARCHAR(36) PRIMARY KEY,"
+            " role_id VARCHAR(36) NOT NULL,"
+            " status VARCHAR(32) NOT NULL DEFAULT 'pending',"
+            " error_message TEXT"
+            ")"
+        ))
+    monkeypatch.setattr(db_module, "engine", eng)
+    db_module._apply_inplace_migrations()
+    cols = {c["name"] for c in inspect(eng).get_columns("candidates")}
+    assert "stale_scores" in cols
+
+
 def test_inplace_migration_noop_when_no_table(monkeypatch, tmp_path):
     from sqlalchemy import create_engine
 

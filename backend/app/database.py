@@ -47,6 +47,8 @@ def _apply_inplace_migrations() -> None:
         additions.append("ALTER TABLE candidates ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'pending'")
     if "error_message" not in existing:
         additions.append("ALTER TABLE candidates ADD COLUMN error_message TEXT")
+    if "stale_scores" not in existing:
+        additions.append("ALTER TABLE candidates ADD COLUMN stale_scores BOOLEAN NOT NULL DEFAULT 0")
     if not additions:
         return
     with engine.begin() as conn:

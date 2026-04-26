@@ -13,7 +13,7 @@ from app.schemas.criterion import (
     CriterionRead,
     CriterionUpdate,
 )
-from app.services.role_service import RoleNotFound, RoleService
+from app.services.role_service import RoleNotFound, RoleService, mark_role_scores_stale
 
 router = APIRouter(prefix="/roles/{role_id}/criteria", tags=["criteria"])
 
@@ -90,6 +90,7 @@ def create_criterion(
     db.add(criterion)
     db.commit()
     db.refresh(criterion)
+    mark_role_scores_stale(db, role_id)
     return CriterionRead.model_validate(criterion)
 
 
@@ -116,6 +117,7 @@ def update_criterion(
 
     db.commit()
     db.refresh(criterion)
+    mark_role_scores_stale(db, role_id)
     return CriterionRead.model_validate(criterion)
 
 
@@ -131,3 +133,4 @@ def delete_criterion(
         raise HTTPException(status_code=404, detail="Criterion not found")
     db.delete(criterion)
     db.commit()
+    mark_role_scores_stale(db, role_id)

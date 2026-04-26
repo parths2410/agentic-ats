@@ -61,6 +61,7 @@ def _to_summary(db: Session, c: Candidate) -> CandidateSummary:
         rank=c.rank,
         status=c.status,
         error_message=c.error_message,
+        stale_scores=bool(c.stale_scores),
         created_at=c.created_at,
         scores=_scores_for(db, c.id),
     )

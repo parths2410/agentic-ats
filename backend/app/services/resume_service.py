@@ -264,6 +264,7 @@ class ResumeService:
             )
             cand.status = "complete"
             cand.error_message = None
+            cand.stale_scores = False
             db.commit()
 
     def _read_aggregate(self, candidate_id: str) -> float | None:

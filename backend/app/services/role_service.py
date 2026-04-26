@@ -65,3 +65,23 @@ class RoleService:
         role = self.get(role_id)
         self.db.delete(role)
         self.db.commit()
+
+
+def mark_role_scores_stale(db, role_id: str) -> int:
+    """Mark every scored candidate for a role as having stale scores.
+
+    Called whenever the role's criteria change so the UI can prompt the user
+    to re-score before trusting the rankings.
+    """
+    from app.models.candidate import Candidate
+
+    rows = (
+        db.query(Candidate)
+        .filter(Candidate.role_id == role_id)
+        .filter(Candidate.aggregate_score.is_not(None))
+        .all()
+    )
+    for c in rows:
+        c.stale_scores = True
+    db.commit()
+    return len(rows)

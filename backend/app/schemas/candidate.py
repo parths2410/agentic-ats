@@ -25,6 +25,7 @@ class CandidateSummary(BaseModel):
     rank: int | None
     status: str
     error_message: str | None
+    stale_scores: bool = False
     created_at: datetime
     scores: list[CriterionScoreRead] = []
 
