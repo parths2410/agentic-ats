@@ -181,7 +181,90 @@ DATA_TOOL_DEFINITIONS: list[dict[str, Any]] = [
 ]
 
 
+# ---- Action tools (mutate UI state) -----------------------------------------
+
+
+SET_HIGHLIGHTS: dict[str, Any] = {
+    "name": "set_highlights",
+    "description": (
+        "Highlight (additive) the given candidates in the UI. Use this for any "
+        "filter/highlight/shortlist request. For filter chaining ('from those…'), "
+        "first call get_ui_state to read the current highlight set, then intersect "
+        "with your new search results, then call set_highlights with that intersection. "
+        "Never claim to remove or hide candidates — only highlight matches."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "candidate_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Candidate IDs to highlight.",
+            },
+        },
+        "required": ["candidate_ids"],
+    },
+}
+
+REMOVE_HIGHLIGHTS: dict[str, Any] = {
+    "name": "remove_highlights",
+    "description": "Un-highlight specific candidates. Used to refine an existing highlight set.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "candidate_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+        },
+        "required": ["candidate_ids"],
+    },
+}
+
+CLEAR_HIGHLIGHTS: dict[str, Any] = {
+    "name": "clear_highlights",
+    "description": "Remove all highlights. Useful when starting a brand-new filter.",
+    "input_schema": {"type": "object", "properties": {}},
+}
+
+SET_SORT: dict[str, Any] = {
+    "name": "set_sort",
+    "description": (
+        "Re-sort the candidate list. `field` may be 'aggregate' for the weighted "
+        "aggregate score, or any criterion name to sort by that criterion's score."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "field": {"type": "string"},
+            "order": {"type": "string", "enum": ["asc", "desc"], "default": "desc"},
+        },
+        "required": ["field"],
+    },
+}
+
+RESET_UI: dict[str, Any] = {
+    "name": "reset_ui",
+    "description": "Restore the original ranking and clear all highlights.",
+    "input_schema": {"type": "object", "properties": {}},
+}
+
+
+ACTION_TOOL_DEFINITIONS: list[dict[str, Any]] = [
+    SET_HIGHLIGHTS,
+    REMOVE_HIGHLIGHTS,
+    CLEAR_HIGHLIGHTS,
+    SET_SORT,
+    RESET_UI,
+]
+
+
+# Names that ChatService treats as action tools (they may produce mutations).
+ACTION_TOOL_NAMES: frozenset[str] = frozenset(
+    d["name"] for d in ACTION_TOOL_DEFINITIONS
+)
+
+
 def all_definitions() -> list[dict[str, Any]]:
     """Return every tool definition the chat loop should expose."""
-    # M4 will append action tools here.
-    return list(DATA_TOOL_DEFINITIONS)
+    return list(DATA_TOOL_DEFINITIONS) + list(ACTION_TOOL_DEFINITIONS)

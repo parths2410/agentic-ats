@@ -229,7 +229,7 @@ def test_compute_stats_percentage_with_no_candidates(db, role):
     assert out["value"] == 0.0
 
 
-def test_get_ui_state_stub(db, role):
+def test_get_ui_state_returns_initial_empty(db, role):
     out = data_tools.get_ui_state(db, role.id, {})
     assert out["highlighted_candidate_ids"] == []
     assert out["current_sort_field"] is None

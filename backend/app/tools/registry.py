@@ -15,7 +15,7 @@ from typing import Any, Callable
 
 from sqlalchemy.orm import Session
 
-from app.tools import data_tools
+from app.tools import action_tools, data_tools
 from app.tools.definitions import all_definitions
 
 
@@ -34,6 +34,12 @@ _DEFAULT_EXECUTORS: dict[str, Executor] = {
     "search_candidates": data_tools.search_candidates,
     "compute_stats": data_tools.compute_stats,
     "get_ui_state": data_tools.get_ui_state,
+    # Action tools — added in M4.
+    "set_highlights": action_tools.set_highlights,
+    "remove_highlights": action_tools.remove_highlights,
+    "clear_highlights": action_tools.clear_highlights,
+    "set_sort": action_tools.set_sort,
+    "reset_ui": action_tools.reset_ui,
 }
 
 

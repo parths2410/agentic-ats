@@ -16,10 +16,11 @@ def test_each_definition_has_required_fields():
 
 
 def test_all_definitions_returns_a_copy():
+    expected_names = {d["name"] for d in all_definitions()}
     a = all_definitions()
-    b = all_definitions()
     a.append({"name": "x"})
-    assert {d["name"] for d in b} == {d["name"] for d in DATA_TOOL_DEFINITIONS}
+    b = all_definitions()
+    assert {d["name"] for d in b} == expected_names
 
 
 def test_search_candidates_field_enum():

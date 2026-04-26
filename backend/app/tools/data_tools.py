@@ -334,13 +334,11 @@ def compute_stats(db: Session, role_id: str, args: dict[str, Any]) -> dict[str, 
 
 
 # ---- get_ui_state -----------------------------------------------------------
-#
-# M3 stub. M4 will replace this with real persistence.
 
 def get_ui_state(db: Session, role_id: str, args: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "role_id": role_id,
-        "highlighted_candidate_ids": [],
-        "current_sort_field": None,
-        "current_sort_order": None,
-    }
+    # Imported lazily to avoid an import cycle with action_tools (which uses
+    # the same UIStateService).
+    from app.services.ui_state_service import UIStateService
+
+    svc = UIStateService(db)
+    return svc.to_dict(svc.get_or_create(role_id))
