@@ -13,7 +13,7 @@ import { api } from "../services/api.js";
  *
  * `messages` shape: [{ role: "user"|"assistant", content, ui_mutations?, tool_trace? }, ...]
  */
-export default function useChat(roleId) {
+export default function useChat(roleId, { onMutations } = {}) {
   const [messages, setMessages] = useState([]);
   const [toolStatus, setToolStatus] = useState(null); // { tool_name, status, summary }
   const [pending, setPending] = useState(false);
@@ -21,6 +21,10 @@ export default function useChat(roleId) {
   const [historyLoading, setHistoryLoading] = useState(true);
   const wsRef = useRef(null);
   const readyRef = useRef(false);
+  const onMutationsRef = useRef(onMutations);
+  useEffect(() => {
+    onMutationsRef.current = onMutations;
+  }, [onMutations]);
 
   // ---- Initial history fetch -----------------------------------------
   useEffect(() => {
@@ -88,6 +92,9 @@ export default function useChat(roleId) {
         ]);
         setToolStatus(null);
         setPending(false);
+        if (data.ui_mutations && onMutationsRef.current) {
+          onMutationsRef.current(data.ui_mutations);
+        }
         return;
       }
       if (data.type === "error") {

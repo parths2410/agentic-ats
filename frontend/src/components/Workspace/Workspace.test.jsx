@@ -47,6 +47,18 @@ beforeEach(() => {
   vi.spyOn(api.ws, "progress").mockImplementation(() => new FakeWS());
   vi.spyOn(api.ws, "chat").mockImplementation(() => new FakeWS());
   vi.spyOn(api.chat, "history").mockResolvedValue({ messages: [] });
+  vi.spyOn(api.chat, "uiState").mockResolvedValue({
+    role_id: "r1",
+    highlighted_candidate_ids: [],
+    current_sort_field: null,
+    current_sort_order: null,
+  });
+  vi.spyOn(api.chat, "reset").mockResolvedValue({
+    role_id: "r1",
+    highlighted_candidate_ids: [],
+    current_sort_field: null,
+    current_sort_order: null,
+  });
   vi.spyOn(api.roles, "get").mockResolvedValue(ROLE);
   vi.spyOn(api.criteria, "list").mockResolvedValue(CRITERIA);
   vi.spyOn(api.candidates, "list").mockResolvedValue(CANDIDATES);
@@ -115,5 +127,38 @@ describe("Workspace", () => {
     api.candidates.list.mockRejectedValueOnce(new Error("down"));
     renderWith();
     await screen.findByText(/down/);
+  });
+
+  it("seeds highlights and sort from initial UI state", async () => {
+    api.chat.uiState.mockResolvedValueOnce({
+      role_id: "r1",
+      highlighted_candidate_ids: ["c1"],
+      current_sort_field: "Python",
+      current_sort_order: "asc",
+    });
+    renderWith();
+    await screen.findByText("Ada");
+    expect(screen.getByText(/highlighted/i)).toBeInTheDocument();
+    expect(screen.getByText(/sorted by/i)).toBeInTheDocument();
+  });
+
+  it("Reset view button calls the reset endpoint", async () => {
+    api.chat.uiState.mockResolvedValueOnce({
+      role_id: "r1",
+      highlighted_candidate_ids: ["c1"],
+      current_sort_field: null,
+      current_sort_order: null,
+    });
+    const user = userEvent.setup();
+    renderWith();
+    await screen.findByText("Ada");
+    await user.click(screen.getByRole("button", { name: /reset view/i }));
+    await waitFor(() => expect(api.chat.reset).toHaveBeenCalledWith("r1"));
+  });
+
+  it("does not show Reset view when no highlights or sort", async () => {
+    renderWith();
+    await screen.findByText("Ada");
+    expect(screen.queryByRole("button", { name: /reset view/i })).not.toBeInTheDocument();
   });
 });

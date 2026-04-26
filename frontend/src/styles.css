@@ -375,3 +375,10 @@ h2 { margin: 0; font-size: 1.2rem; }
   font-family: inherit;
   font-size: 0.95rem;
 }
+
+/* M4: chat-driven highlight */
+.candidate-card.highlighted {
+  border-color: #ffd56a;
+  background: linear-gradient(0deg, #fffbe5, #fffbe5);
+  box-shadow: 0 0 0 2px rgba(255, 213, 106, 0.45);
+}

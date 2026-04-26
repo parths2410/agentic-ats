@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import useChat from "../../hooks/useChat.js";
 
-export default function ChatPanel({ roleId }) {
+export default function ChatPanel({ roleId, onMutations }) {
   const { messages, toolStatus, pending, error, historyLoading, send, clear } =
-    useChat(roleId);
+    useChat(roleId, { onMutations });
   const [input, setInput] = useState("");
   const scrollRef = useRef(null);
 

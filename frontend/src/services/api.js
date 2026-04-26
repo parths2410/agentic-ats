@@ -71,6 +71,9 @@ export const api = {
     history: (roleId) => request(`/roles/${roleId}/chat/history`),
     clearHistory: (roleId) =>
       request(`/roles/${roleId}/chat/history`, { method: "DELETE" }),
+    uiState: (roleId) => request(`/roles/${roleId}/chat/ui-state`),
+    reset: (roleId) =>
+      request(`/roles/${roleId}/chat/reset`, { method: "POST" }),
   },
 
   ws: {

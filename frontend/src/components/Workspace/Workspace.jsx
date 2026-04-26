@@ -11,14 +11,27 @@ function fmtScore(n) {
   return Number(n).toFixed(2);
 }
 
+function sortValue(candidate, field, isLiteral) {
+  if (isLiteral) {
+    if (field === "name") return (candidate.name || "").toLowerCase() || null;
+    if (field === "rank") return candidate.rank ?? null;
+    return candidate.aggregate_score ?? null;
+  }
+  // Treat as criterion name.
+  const hit = candidate.scores?.find(
+    (s) => s.criterion_name?.toLowerCase() === field.toLowerCase(),
+  );
+  return hit ? hit.score : null;
+}
+
 function StatusBadge({ status }) {
   return <span className={`status-badge status-${status}`}>{status}</span>;
 }
 
-function CandidateCard({ candidate, onExpand, expanded, detail, onDelete }) {
+function CandidateCard({ candidate, onExpand, expanded, detail, onDelete, highlighted }) {
   const expandable = candidate.status === "complete";
   return (
-    <li className={`candidate-card status-${candidate.status}`}>
+    <li className={`candidate-card status-${candidate.status}${highlighted ? " highlighted" : ""}`}>
       <div className="candidate-row">
         <div className="candidate-rank">
           {candidate.rank ? `#${candidate.rank}` : "—"}
@@ -144,6 +157,8 @@ export default function Workspace() {
   const [expandedId, setExpandedId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [highlightedIds, setHighlightedIds] = useState([]);
+  const [sort, setSort] = useState(null); // { field, order } or null
 
   const { batch, perCandidate } = useProgress(roleId);
 
@@ -162,15 +177,22 @@ export default function Workspace() {
     async function run() {
       setLoading(true);
       try {
-        const [r, c, list] = await Promise.all([
+        const [r, c, list, ui] = await Promise.all([
           api.roles.get(roleId),
           api.criteria.list(roleId),
           api.candidates.list(roleId),
+          api.chat.uiState(roleId).catch(() => null),
         ]);
         if (cancelled) return;
         setRole(r);
         setCriteria(c);
         setCandidates(list);
+        if (ui) {
+          setHighlightedIds(ui.highlighted_candidate_ids || []);
+          if (ui.current_sort_field) {
+            setSort({ field: ui.current_sort_field, order: ui.current_sort_order || "desc" });
+          }
+        }
       } catch (e) {
         if (!cancelled) setError(e.message);
       } finally {
@@ -182,6 +204,45 @@ export default function Workspace() {
       cancelled = true;
     };
   }, [roleId]);
+
+  const applyMutations = useCallback((mut) => {
+    if (!mut) return;
+    if (mut.reset) {
+      setHighlightedIds([]);
+      setSort(null);
+      return;
+    }
+    if (mut.clear_highlights) {
+      setHighlightedIds([]);
+    }
+    if (mut.highlights) {
+      setHighlightedIds((prev) => {
+        const dropped = new Set(mut.highlights.remove || []);
+        const next = prev.filter((id) => !dropped.has(id));
+        const seen = new Set(next);
+        for (const id of mut.highlights.add || []) {
+          if (!seen.has(id)) {
+            next.push(id);
+            seen.add(id);
+          }
+        }
+        return next;
+      });
+    }
+    if (mut.re_sort) {
+      setSort({ field: mut.re_sort.field, order: mut.re_sort.order || "desc" });
+    }
+  }, []);
+
+  async function handleResetUI() {
+    try {
+      await api.chat.reset(roleId);
+      setHighlightedIds([]);
+      setSort(null);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
 
   // While processing, refetch the candidate list periodically so scores
   // appear as they land. The WS hook tells us when *something* changed.
@@ -240,6 +301,28 @@ export default function Workspace() {
     return { total, complete, errors };
   }, [candidates]);
 
+  const highlightSet = useMemo(() => new Set(highlightedIds), [highlightedIds]);
+
+  const orderedCandidates = useMemo(() => {
+    if (!sort) return candidates;
+    const arr = [...candidates];
+    const desc = sort.order === "desc";
+    const literal = ["aggregate", "aggregate_score", "score", "rank", "name"];
+    const isLiteral = literal.includes(sort.field);
+    arr.sort((a, b) => {
+      const va = sortValue(a, sort.field, isLiteral);
+      const vb = sortValue(b, sort.field, isLiteral);
+      // Nulls always last regardless of direction.
+      if (va === null && vb === null) return 0;
+      if (va === null) return 1;
+      if (vb === null) return -1;
+      if (va < vb) return desc ? 1 : -1;
+      if (va > vb) return desc ? -1 : 1;
+      return 0;
+    });
+    return arr;
+  }, [candidates, sort]);
+
   if (loading) return <p>Loading workspace…</p>;
   if (error && !role) return <p className="error">{error}</p>;
 
@@ -254,12 +337,27 @@ export default function Workspace() {
             {summary.errors > 0 && <> · {summary.errors} error{summary.errors === 1 ? "" : "s"}</>}
             {" · "}
             {criteria.length} criteria
+            {highlightedIds.length > 0 && (
+              <> · <strong>{highlightedIds.length}</strong> highlighted</>
+            )}
+            {sort && (
+              <> · sorted by <strong>{sort.field}</strong> ({sort.order})</>
+            )}
           </p>
         </div>
         <div className="workspace-actions">
           <Link to={`/roles/${roleId}`} className="btn btn-secondary">
             Edit role / criteria
           </Link>
+          {(highlightedIds.length > 0 || sort) && (
+            <button
+              onClick={handleResetUI}
+              className="btn btn-secondary"
+              title="Clear highlights and reset sort"
+            >
+              Reset view
+            </button>
+          )}
           <button
             onClick={handleRescore}
             className="btn btn-secondary"
@@ -284,7 +382,7 @@ export default function Workspace() {
         </p>
       ) : (
         <ul className="candidate-list">
-          {candidates.map((c) => (
+          {orderedCandidates.map((c) => (
             <CandidateCard
               key={c.id}
               candidate={c}
@@ -292,12 +390,13 @@ export default function Workspace() {
               detail={details[c.id]}
               onExpand={() => handleExpand(c)}
               onDelete={() => handleDelete(c)}
+              highlighted={highlightSet.has(c.id)}
             />
           ))}
         </ul>
       )}
       </div>
-      <ChatPanel roleId={roleId} />
+      <ChatPanel roleId={roleId} onMutations={applyMutations} />
     </section>
   );
 }

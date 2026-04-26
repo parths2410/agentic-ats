@@ -156,4 +156,32 @@ describe("useChat", () => {
     const { result } = renderHook(() => useChat(null));
     expect(result.current.messages).toEqual([]);
   });
+
+  it("invokes onMutations when chat_complete includes mutations", async () => {
+    const onMutations = vi.fn();
+    const { result } = renderHook(() => useChat("r1", { onMutations }));
+    await waitFor(() => expect(result.current.historyLoading).toBe(false));
+    const ws = FakeWebSocket.instances[0];
+    ws.fakeOpen();
+    act(() => result.current.send("hi"));
+    act(() =>
+      ws.emit({
+        type: "chat_complete",
+        content: "ok",
+        ui_mutations: { highlights: { add: ["c1"], remove: [] } },
+      })
+    );
+    expect(onMutations).toHaveBeenCalledWith({ highlights: { add: ["c1"], remove: [] } });
+  });
+
+  it("does not call onMutations when chat_complete has no mutations", async () => {
+    const onMutations = vi.fn();
+    const { result } = renderHook(() => useChat("r1", { onMutations }));
+    await waitFor(() => expect(result.current.historyLoading).toBe(false));
+    const ws = FakeWebSocket.instances[0];
+    ws.fakeOpen();
+    act(() => result.current.send("hi"));
+    act(() => ws.emit({ type: "chat_complete", content: "ok" }));
+    expect(onMutations).not.toHaveBeenCalled();
+  });
 });
