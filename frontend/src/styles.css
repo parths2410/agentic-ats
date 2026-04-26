@@ -382,3 +382,37 @@ h2 { margin: 0; font-size: 1.2rem; }
   background: linear-gradient(0deg, #fffbe5, #fffbe5);
   box-shadow: 0 0 0 2px rgba(255, 213, 106, 0.45);
 }
+
+/* M5: stale-scores banner + confidence pills */
+.banner {
+  margin: 0.75rem 0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+.banner-warn {
+  background: #fff5d6;
+  border: 1px solid #f0d278;
+  color: #6a4c00;
+}
+.link-btn {
+  background: none;
+  border: none;
+  color: #0a4f8a;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+
+.confidence-pills { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.5rem; }
+.confidence-pill {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #555;
+}
+.confidence-pill.confidence-high   { background: #d8f0d8; color: #194c19; }
+.confidence-pill.confidence-medium { background: #fff1c0; color: #6a4c00; }
+.confidence-pill.confidence-low    { background: #fbd9d9; color: #5a1010; }

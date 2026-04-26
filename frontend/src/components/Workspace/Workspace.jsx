@@ -28,6 +28,22 @@ function StatusBadge({ status }) {
   return <span className={`status-badge status-${status}`}>{status}</span>;
 }
 
+function ConfidencePills({ confidence }) {
+  const entries = Object.entries(confidence || {}).filter(
+    ([, v]) => typeof v === "string"
+  );
+  if (entries.length === 0) return null;
+  return (
+    <div className="confidence-pills" aria-label="Parse confidence">
+      {entries.map(([section, level]) => (
+        <span key={section} className={`confidence-pill confidence-${level}`}>
+          {section}: {level}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function CandidateCard({ candidate, onExpand, expanded, detail, onDelete, highlighted }) {
   const expandable = candidate.status === "complete";
   return (
@@ -82,6 +98,9 @@ function CandidateCard({ candidate, onExpand, expanded, detail, onDelete, highli
 
       {expanded && detail && (
         <div className="candidate-detail">
+          {detail.parse_confidence && (
+            <ConfidencePills confidence={detail.parse_confidence} />
+          )}
           {detail.structured_profile?.summary && (
             <p className="profile-summary">{detail.structured_profile.summary}</p>
           )}
@@ -298,7 +317,8 @@ export default function Workspace() {
     const total = candidates.length;
     const complete = candidates.filter((c) => c.status === "complete").length;
     const errors = candidates.filter((c) => c.status === "error").length;
-    return { total, complete, errors };
+    const stale = candidates.filter((c) => c.stale_scores).length;
+    return { total, complete, errors, stale };
   }, [candidates]);
 
   const highlightSet = useMemo(() => new Set(highlightedIds), [highlightedIds]);
@@ -373,6 +393,15 @@ export default function Workspace() {
       {batch?.active && (
         <div className="status">
           Processing {batch.done}/{batch.total}…
+        </div>
+      )}
+
+      {summary.stale > 0 && (
+        <div className="banner banner-warn" role="status">
+          Scores are out of date — criteria changed.{" "}
+          <button onClick={handleRescore} className="link-btn">
+            Re-score now
+          </button>
         </div>
       )}
 

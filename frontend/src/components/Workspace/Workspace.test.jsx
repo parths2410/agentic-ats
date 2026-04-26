@@ -161,4 +161,38 @@ describe("Workspace", () => {
     await screen.findByText("Ada");
     expect(screen.queryByRole("button", { name: /reset view/i })).not.toBeInTheDocument();
   });
+
+  it("shows stale-scores banner when any candidate is stale", async () => {
+    api.candidates.list.mockResolvedValueOnce(
+      CANDIDATES.map((c) => ({ ...c, stale_scores: true }))
+    );
+    renderWith();
+    await screen.findByText(/Scores are out of date/i);
+  });
+
+  it("Re-score now from banner triggers rescore", async () => {
+    api.candidates.list.mockResolvedValueOnce(
+      CANDIDATES.map((c) => ({ ...c, stale_scores: true }))
+    );
+    const user = userEvent.setup();
+    renderWith();
+    await screen.findByText(/Scores are out of date/i);
+    await user.click(screen.getByRole("button", { name: /re-score now/i }));
+    await waitFor(() => expect(api.scoring.rescore).toHaveBeenCalledWith("r1"));
+  });
+
+  it("renders confidence pills when expanded candidate has parse_confidence", async () => {
+    api.candidates.get.mockResolvedValueOnce({
+      ...CANDIDATES[0],
+      raw_text: "...",
+      structured_profile: { summary: "x", experiences: [], education: [], skills: [] },
+      parse_confidence: { name: "high", education: "low" },
+    });
+    const user = userEvent.setup();
+    renderWith();
+    await screen.findByText("Ada");
+    await user.click(screen.getByRole("button", { name: /expand/i }));
+    await screen.findByText(/name: high/);
+    expect(screen.getByText(/education: low/)).toBeInTheDocument();
+  });
 });
