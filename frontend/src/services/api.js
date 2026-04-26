@@ -67,11 +67,22 @@ export const api = {
       request(`/roles/${roleId}/score`, { method: "POST" }),
   },
 
+  chat: {
+    history: (roleId) => request(`/roles/${roleId}/chat/history`),
+    clearHistory: (roleId) =>
+      request(`/roles/${roleId}/chat/history`, { method: "DELETE" }),
+  },
+
   ws: {
     progress: (roleId) => {
       const proto = window.location.protocol === "https:" ? "wss" : "ws";
-      const host = window.location.host; // vite proxies /ws to the backend
+      const host = window.location.host;
       return new WebSocket(`${proto}://${host}/ws/roles/${roleId}/progress`);
+    },
+    chat: (roleId) => {
+      const proto = window.location.protocol === "https:" ? "wss" : "ws";
+      const host = window.location.host;
+      return new WebSocket(`${proto}://${host}/ws/roles/${roleId}/chat`);
     },
   },
 };

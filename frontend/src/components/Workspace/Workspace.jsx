@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../services/api.js";
 import useProgress from "../../hooks/useProgress.js";
+import ChatPanel from "./ChatPanel.jsx";
 
 const PROCESSING = new Set(["pending", "extracting", "scoring"]);
 
@@ -243,7 +244,8 @@ export default function Workspace() {
   if (error && !role) return <p className="error">{error}</p>;
 
   return (
-    <section className="workspace">
+    <section className="workspace workspace-with-chat">
+      <div className="workspace-main">
       <header className="workspace-header">
         <div>
           <h1>{role?.title}</h1>
@@ -294,6 +296,8 @@ export default function Workspace() {
           ))}
         </ul>
       )}
+      </div>
+      <ChatPanel roleId={roleId} />
     </section>
   );
 }
