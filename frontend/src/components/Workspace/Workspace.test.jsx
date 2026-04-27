@@ -220,10 +220,10 @@ describe("Workspace", () => {
     expect(matches.length).toBeGreaterThan(0);
   });
 
-  it("empty state links to the Resumes tab on RoleSetup", async () => {
+  it("empty state hero links to the Resumes tab on RoleSetup", async () => {
     api.candidates.list.mockResolvedValueOnce([]);
     renderWith();
-    await screen.findByText(/No candidates yet/);
+    await screen.findByText("No candidates yet");
     expect(screen.getByRole("link", { name: /upload resumes/i })).toHaveAttribute(
       "href",
       "/roles/r1?tab=resumes",

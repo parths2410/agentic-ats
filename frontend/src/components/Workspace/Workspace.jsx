@@ -237,9 +237,12 @@ export default function Workspace() {
         max={0.75}
         left={
           candidates.length === 0 ? (
-            <p style={{ color: "#777", marginTop: "1.5rem" }}>
-              No candidates yet. <Link to={`/roles/${roleId}?tab=resumes`}>Upload resumes</Link>.
-            </p>
+            <div className="workspace-empty">
+              <p className="workspace-empty-title">No candidates yet</p>
+              <Link to={`/roles/${roleId}?tab=resumes`} className="btn btn-primary">
+                Upload resumes →
+              </Link>
+            </div>
           ) : (
             <ul className="wc-list">
               {orderedCandidates.map((c) => (

@@ -795,6 +795,23 @@ main:has(> .workspace-page) {
 }
 .wc-score-denom { font-size: 0.72rem; color: #888; font-weight: 400; }
 
+/* Workspace empty state */
+.workspace-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5rem 1rem 3rem;
+  gap: 1.25rem;
+  text-align: center;
+}
+.workspace-empty-title {
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: #555;
+  margin: 0;
+}
+
 /* ---- Workspace + Chat panel layout ---- */
 .workspace-with-chat {
   display: grid;
@@ -990,27 +1007,32 @@ main:has(> .workspace-page) {
 .chat-send-btn:hover:not(:disabled) { background: #0052a3; }
 .chat-send-btn:disabled { background: #cccccc; cursor: not-allowed; }
 
-/* M5: stale-scores banner + confidence pills */
+/* Stale-scores banner */
 .banner {
   margin: 0.75rem 0;
-  padding: 0.6rem 0.85rem;
+  padding: 0.55rem 0.85rem;
   border-radius: 6px;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
 }
 .banner-warn {
-  background: #fff5d6;
-  border: 1px solid #f0d278;
-  color: #6a4c00;
+  background: #fffbeb;
+  border-left: 3px solid #facc15;
+  color: #78630a;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 .link-btn {
   background: none;
   border: none;
-  color: #0a4f8a;
-  text-decoration: underline;
+  color: #0066cc;
   cursor: pointer;
   padding: 0;
   font: inherit;
+  font-size: 0.85rem;
+  margin-left: auto;
 }
+.link-btn:hover { text-decoration: underline; }
 
 .confidence-pills { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.5rem; }
 .confidence-pill {
