@@ -142,7 +142,7 @@ describe("Workspace", () => {
     expect(screen.getByText(/sorted by/i)).toBeInTheDocument();
   });
 
-  it("Reset view button calls the reset endpoint", async () => {
+  it("inline Reset link calls the reset endpoint", async () => {
     api.chat.uiState.mockResolvedValueOnce({
       role_id: "r1",
       highlighted_candidate_ids: ["c1"],
@@ -152,14 +152,27 @@ describe("Workspace", () => {
     const user = userEvent.setup();
     renderWith();
     await screen.findByText("Ada");
-    await user.click(screen.getByRole("button", { name: /reset view/i }));
+    await user.click(screen.getByRole("button", { name: /^reset$/i }));
     await waitFor(() => expect(api.chat.reset).toHaveBeenCalledWith("r1"));
   });
 
-  it("does not show Reset view when no highlights or sort", async () => {
+  it("does not show the Reset link when no highlights or sort", async () => {
     renderWith();
     await screen.findByText("Ada");
-    expect(screen.queryByRole("button", { name: /reset view/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^reset$/i })).not.toBeInTheDocument();
+  });
+
+  it("renders the Setup → link pointing at the role setup page", async () => {
+    renderWith();
+    await screen.findByText("Backend Eng");
+    expect(screen.getByRole("link", { name: /setup →/i })).toHaveAttribute("href", "/roles/r1");
+  });
+
+  it("does not render the old Edit role / criteria button", async () => {
+    renderWith();
+    await screen.findByText("Backend Eng");
+    expect(screen.queryByRole("link", { name: /edit role/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /edit role/i })).not.toBeInTheDocument();
   });
 
   it("shows stale-scores banner when any candidate is stale", async () => {

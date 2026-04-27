@@ -343,16 +343,17 @@ export default function Workspace() {
     return arr;
   }, [candidates, sort]);
 
-  if (loading) return <p>Loading workspace…</p>;
+  if (loading) return <p className="roles-state">Loading workspace…</p>;
   if (error && !role) return <p className="error">{error}</p>;
 
+  const hasUiOverride = highlightedIds.length > 0 || Boolean(sort);
+
   return (
-    <section className="workspace workspace-with-chat">
-      <div className="workspace-main">
+    <section className="workspace-page">
       <header className="workspace-header">
-        <div>
-          <h1>{role?.title}</h1>
-          <p className="hint">
+        <div className="workspace-header-info">
+          <h1 className="workspace-title">{role?.title}</h1>
+          <p className="workspace-meta">
             {summary.complete}/{summary.total} scored
             {summary.errors > 0 && <> · {summary.errors} error{summary.errors === 1 ? "" : "s"}</>}
             {" · "}
@@ -363,28 +364,28 @@ export default function Workspace() {
             {sort && (
               <> · sorted by <strong>{sort.field}</strong> ({sort.order})</>
             )}
+            {hasUiOverride && (
+              <>
+                {" · "}
+                <button type="button" onClick={handleResetUI} className="meta-link">
+                  Reset
+                </button>
+              </>
+            )}
           </p>
         </div>
-        <div className="workspace-actions">
-          <Link to={`/roles/${roleId}`} className="btn btn-secondary">
-            Edit role / criteria
-          </Link>
-          {(highlightedIds.length > 0 || sort) && (
-            <button
-              onClick={handleResetUI}
-              className="btn btn-secondary"
-              title="Clear highlights and reset sort"
-            >
-              Reset view
-            </button>
-          )}
+        <div className="workspace-header-actions">
           <button
+            type="button"
             onClick={handleRescore}
             className="btn btn-secondary"
             disabled={summary.total === 0}
           >
             Re-score all
           </button>
+          <Link to={`/roles/${roleId}`} className="workspace-setup-link">
+            Setup →
+          </Link>
         </div>
       </header>
 
@@ -405,27 +406,32 @@ export default function Workspace() {
         </div>
       )}
 
-      {candidates.length === 0 ? (
-        <p style={{ color: "#777", marginTop: "1.5rem" }}>
-          No candidates yet. <Link to={`/roles/${roleId}`}>Upload resumes</Link>.
-        </p>
-      ) : (
-        <ul className="candidate-list">
-          {orderedCandidates.map((c) => (
-            <CandidateCard
-              key={c.id}
-              candidate={c}
-              expanded={expandedId === c.id}
-              detail={details[c.id]}
-              onExpand={() => handleExpand(c)}
-              onDelete={() => handleDelete(c)}
-              highlighted={highlightSet.has(c.id)}
-            />
-          ))}
-        </ul>
-      )}
+      <div className="workspace-split">
+        <div className="workspace-list-pane">
+          {candidates.length === 0 ? (
+            <p style={{ color: "#777", marginTop: "1.5rem" }}>
+              No candidates yet. <Link to={`/roles/${roleId}?tab=resumes`}>Upload resumes</Link>.
+            </p>
+          ) : (
+            <ul className="candidate-list">
+              {orderedCandidates.map((c) => (
+                <CandidateCard
+                  key={c.id}
+                  candidate={c}
+                  expanded={expandedId === c.id}
+                  detail={details[c.id]}
+                  onExpand={() => handleExpand(c)}
+                  onDelete={() => handleDelete(c)}
+                  highlighted={highlightSet.has(c.id)}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="workspace-chat-pane">
+          <ChatPanel roleId={roleId} onMutations={applyMutations} />
+        </div>
       </div>
-      <ChatPanel roleId={roleId} onMutations={applyMutations} />
     </section>
   );
 }
