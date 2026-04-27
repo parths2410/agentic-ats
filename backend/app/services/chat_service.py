@@ -43,16 +43,25 @@ MAX_ITERATIONS = 5
 class UIMutationsAccumulator:
     """Folds individual action-tool mutations into a single payload.
 
-    Highlight semantics: `add` and `remove` are net sets — if the LLM
-    highlights c1 then removes c1 in the same turn, c1 ends up in `remove`.
+    Highlight semantics:
+    - `set_highlights` REPLACES the set. After a set, the accumulator
+      tracks the target set and any further `remove_highlights` calls
+      remove from that set.
+    - `remove_highlights` BEFORE any `set_highlights` is recorded as a
+      delta — applied to whatever the frontend currently shows.
+    - `clear_highlights` empties the set.
+
     Sort and reset are last-write-wins.
     """
 
     def __init__(self) -> None:
-        self.add: list[str] = []
-        self.remove: list[str] = []
-        self._add_set: set[str] = set()
-        self._remove_set: set[str] = set()
+        # When a `set_highlights` happens, target_set holds the canonical
+        # "after" list. Subsequent removes mutate it in place.
+        self.target_set: list[str] | None = None
+        self._target_set_set: set[str] = set()
+        # Delta removes (before any set_highlights this turn).
+        self.delta_remove: list[str] = []
+        self._delta_remove_set: set[str] = set()
         self.sort_field: str | None = None
         self.sort_order: str | None = None
         self.cleared: bool = False
@@ -61,8 +70,8 @@ class UIMutationsAccumulator:
     @property
     def has_changes(self) -> bool:
         return bool(
-            self.add
-            or self.remove
+            self.target_set is not None
+            or self.delta_remove
             or self.sort_field is not None
             or self.cleared
             or self.reset
@@ -71,40 +80,51 @@ class UIMutationsAccumulator:
     def merge(self, mutation: dict[str, Any]) -> None:
         mtype = mutation.get("type")
         if mtype == "set_highlights":
-            for cid in mutation.get("add") or []:
-                cid = str(cid)
-                if cid in self._remove_set:
-                    self._remove_set.discard(cid)
-                    self.remove = [c for c in self.remove if c != cid]
-                if cid not in self._add_set:
-                    self._add_set.add(cid)
-                    self.add.append(cid)
-            for cid in mutation.get("remove") or []:
-                cid = str(cid)
-                if cid in self._add_set:
-                    self._add_set.discard(cid)
-                    self.add = [c for c in self.add if c != cid]
-                if cid not in self._remove_set:
-                    self._remove_set.add(cid)
-                    self.remove.append(cid)
+            ids = [str(c) for c in (mutation.get("ids") or []) if c is not None]
+            # Dedupe while preserving order.
+            seen: set[str] = set()
+            ordered: list[str] = []
+            for cid in ids:
+                if cid not in seen:
+                    seen.add(cid)
+                    ordered.append(cid)
+            self.target_set = ordered
+            self._target_set_set = seen
+            # A `set` overrides any earlier deltas this turn.
+            self.delta_remove = []
+            self._delta_remove_set.clear()
+            # `set` also overrides a prior clear in the same turn.
+            self.cleared = False
+        elif mtype == "remove_highlights":
+            ids = [str(c) for c in (mutation.get("ids") or []) if c is not None]
+            if self.target_set is not None:
+                for cid in ids:
+                    if cid in self._target_set_set:
+                        self._target_set_set.discard(cid)
+                        self.target_set = [c for c in self.target_set if c != cid]
+            else:
+                for cid in ids:
+                    if cid not in self._delta_remove_set:
+                        self._delta_remove_set.add(cid)
+                        self.delta_remove.append(cid)
         elif mtype == "clear_highlights":
-            self.add = []
-            self.remove = []
-            self._add_set.clear()
-            self._remove_set.clear()
+            self.target_set = None
+            self._target_set_set.clear()
+            self.delta_remove = []
+            self._delta_remove_set.clear()
             self.cleared = True
         elif mtype == "set_sort":
             self.sort_field = mutation.get("field")
             self.sort_order = mutation.get("order") or "desc"
         elif mtype == "reset_ui":
-            self.add = []
-            self.remove = []
-            self._add_set.clear()
-            self._remove_set.clear()
+            self.target_set = None
+            self._target_set_set.clear()
+            self.delta_remove = []
+            self._delta_remove_set.clear()
             self.sort_field = None
             self.sort_order = None
             self.reset = True
-            self.cleared = False  # reset supersedes clear
+            self.cleared = False
 
     def to_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {}
@@ -112,8 +132,12 @@ class UIMutationsAccumulator:
             out["reset"] = True
         elif self.cleared:
             out["clear_highlights"] = True
-        if self.add or self.remove:
-            out["highlights"] = {"add": self.add, "remove": self.remove}
+        if self.target_set is not None:
+            # Replace semantics — frontend should set the highlight list to
+            # exactly these IDs.
+            out["highlights"] = {"set": self.target_set}
+        elif self.delta_remove:
+            out["highlights"] = {"remove": self.delta_remove}
         if self.sort_field is not None:
             out["re_sort"] = {"field": self.sort_field, "order": self.sort_order or "desc"}
         return out

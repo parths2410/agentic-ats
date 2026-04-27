@@ -88,18 +88,14 @@ export default function Workspace() {
       setHighlightedIds([]);
     }
     if (mut.highlights) {
-      setHighlightedIds((prev) => {
-        const dropped = new Set(mut.highlights.remove || []);
-        const next = prev.filter((id) => !dropped.has(id));
-        const seen = new Set(next);
-        for (const id of mut.highlights.add || []) {
-          if (!seen.has(id)) {
-            next.push(id);
-            seen.add(id);
-          }
-        }
-        return next;
-      });
+      if (Array.isArray(mut.highlights.set)) {
+        // Replace semantics — set the highlight list to exactly these IDs.
+        setHighlightedIds(mut.highlights.set);
+      } else if (Array.isArray(mut.highlights.remove)) {
+        // Delta remove (no set_highlights this turn).
+        const dropped = new Set(mut.highlights.remove);
+        setHighlightedIds((prev) => prev.filter((id) => !dropped.has(id)));
+      }
     }
     if (mut.re_sort) {
       setSort({ field: mut.re_sort.field, order: mut.re_sort.order || "desc" });

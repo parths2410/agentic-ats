@@ -187,11 +187,16 @@ DATA_TOOL_DEFINITIONS: list[dict[str, Any]] = [
 SET_HIGHLIGHTS: dict[str, Any] = {
     "name": "set_highlights",
     "description": (
-        "Highlight (additive) the given candidates in the UI. Use this for any "
+        "Replace the highlighted-candidates set with exactly these IDs. This is "
+        "the single source of truth for what is highlighted right now — calling "
+        "it does NOT add to the existing set, it overwrites it. Use this for any "
         "filter/highlight/shortlist request. For filter chaining ('from those…'), "
         "first call get_ui_state to read the current highlight set, then intersect "
-        "with your new search results, then call set_highlights with that intersection. "
-        "Never claim to remove or hide candidates — only highlight matches."
+        "with your new search results, then call set_highlights with that "
+        "intersection. To clear all highlights, call clear_highlights instead. "
+        "Never claim to remove or hide candidates — only highlight matches. "
+        "IMPORTANT: pass the candidate's `id` field from get_candidates (a UUID "
+        "string like 'd91eebc3-de25-…'), NOT the `rank` integer."
     ),
     "input_schema": {
         "type": "object",
@@ -199,7 +204,11 @@ SET_HIGHLIGHTS: dict[str, Any] = {
             "candidate_ids": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Candidate IDs to highlight.",
+                "description": (
+                    "The complete list of candidate UUIDs (from the `id` field "
+                    "of get_candidates) that should be highlighted after this "
+                    "call. Do NOT pass rank numbers."
+                ),
             },
         },
         "required": ["candidate_ids"],
@@ -208,7 +217,11 @@ SET_HIGHLIGHTS: dict[str, Any] = {
 
 REMOVE_HIGHLIGHTS: dict[str, Any] = {
     "name": "remove_highlights",
-    "description": "Un-highlight specific candidates. Used to refine an existing highlight set.",
+    "description": (
+        "Un-highlight specific candidates. Used to refine an existing highlight "
+        "set. Pass candidate UUIDs (the `id` field from get_candidates), not "
+        "rank numbers."
+    ),
     "input_schema": {
         "type": "object",
         "properties": {

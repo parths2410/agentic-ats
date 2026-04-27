@@ -197,7 +197,7 @@ async def test_set_highlights_mutation_returned_in_chat_result(db, role, candida
     svc = ChatService(db, llm, registry=default_registry())
     out = await svc.handle_message(role.id, "Highlight Ada")
     assert out.ui_mutations is not None
-    assert out.ui_mutations["highlights"]["add"] == [candidates[0].id]
+    assert out.ui_mutations["highlights"]["set"] == [candidates[0].id]
 
 
 @pytest.mark.asyncio
@@ -250,22 +250,50 @@ async def test_data_only_tool_does_not_emit_mutations(db, role, candidates):
     assert out.ui_mutations is None
 
 
-def test_ui_mutations_accumulator_add_then_remove_same_id():
+def test_ui_mutations_accumulator_set_replaces_prior_set():
     acc = UIMutationsAccumulator()
-    acc.merge({"type": "set_highlights", "add": ["a"], "remove": []})
-    acc.merge({"type": "set_highlights", "add": [], "remove": ["a"]})
+    acc.merge({"type": "set_highlights", "ids": ["a", "b"]})
+    acc.merge({"type": "set_highlights", "ids": ["c"]})
     out = acc.to_dict()
-    # Net effect: a is in remove, not in add.
-    assert out["highlights"]["add"] == []
-    assert out["highlights"]["remove"] == ["a"]
+    assert out["highlights"]["set"] == ["c"]
+
+
+def test_ui_mutations_accumulator_set_then_remove_mutates_target():
+    acc = UIMutationsAccumulator()
+    acc.merge({"type": "set_highlights", "ids": ["a", "b", "c"]})
+    acc.merge({"type": "remove_highlights", "ids": ["b"]})
+    out = acc.to_dict()
+    assert out["highlights"]["set"] == ["a", "c"]
+
+
+def test_ui_mutations_accumulator_remove_without_set_is_delta():
+    acc = UIMutationsAccumulator()
+    acc.merge({"type": "remove_highlights", "ids": ["x", "y"]})
+    out = acc.to_dict()
+    assert out["highlights"] == {"remove": ["x", "y"]}
 
 
 def test_ui_mutations_accumulator_clear():
     acc = UIMutationsAccumulator()
-    acc.merge({"type": "set_highlights", "add": ["a"], "remove": []})
+    acc.merge({"type": "set_highlights", "ids": ["a"]})
     acc.merge({"type": "clear_highlights"})
     out = acc.to_dict()
     assert out == {"clear_highlights": True}
+
+
+def test_ui_mutations_accumulator_set_after_clear_overrides_clear():
+    acc = UIMutationsAccumulator()
+    acc.merge({"type": "clear_highlights"})
+    acc.merge({"type": "set_highlights", "ids": ["a"]})
+    out = acc.to_dict()
+    assert out == {"highlights": {"set": ["a"]}}
+
+
+def test_ui_mutations_accumulator_set_dedupes_ids():
+    acc = UIMutationsAccumulator()
+    acc.merge({"type": "set_highlights", "ids": ["a", "b", "a", "c", "b"]})
+    out = acc.to_dict()
+    assert out["highlights"]["set"] == ["a", "b", "c"]
 
 
 def test_ui_mutations_accumulator_sort_last_write_wins():

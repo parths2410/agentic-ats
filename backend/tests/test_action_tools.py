@@ -4,14 +4,20 @@ from app.tools.data_tools import get_ui_state
 
 def test_set_highlights_persists_and_returns_mutation(db, role):
     out = action_tools.set_highlights(db, role.id, {"candidate_ids": ["c1", "c2"]})
-    assert out["mutation"] == {"type": "set_highlights", "add": ["c1", "c2"], "remove": []}
+    assert out["mutation"] == {"type": "set_highlights", "ids": ["c1", "c2"]}
     assert out["ui_state"]["highlighted_candidate_ids"] == ["c1", "c2"]
 
 
-def test_set_highlights_is_additive(db, role):
+def test_set_highlights_replaces_previous_set(db, role):
     action_tools.set_highlights(db, role.id, {"candidate_ids": ["a"]})
     out = action_tools.set_highlights(db, role.id, {"candidate_ids": ["b"]})
-    assert out["ui_state"]["highlighted_candidate_ids"] == ["a", "b"]
+    assert out["ui_state"]["highlighted_candidate_ids"] == ["b"]
+
+
+def test_set_highlights_with_empty_list_clears(db, role):
+    action_tools.set_highlights(db, role.id, {"candidate_ids": ["a", "b"]})
+    out = action_tools.set_highlights(db, role.id, {"candidate_ids": []})
+    assert out["ui_state"]["highlighted_candidate_ids"] == []
 
 
 def test_set_highlights_filters_falsy_ids(db, role):
@@ -25,7 +31,7 @@ def test_remove_highlights(db, role):
     action_tools.set_highlights(db, role.id, {"candidate_ids": ["a", "b", "c"]})
     out = action_tools.remove_highlights(db, role.id, {"candidate_ids": ["b"]})
     assert out["ui_state"]["highlighted_candidate_ids"] == ["a", "c"]
-    assert out["mutation"] == {"type": "set_highlights", "add": [], "remove": ["b"]}
+    assert out["mutation"] == {"type": "remove_highlights", "ids": ["b"]}
 
 
 def test_clear_highlights(db, role):

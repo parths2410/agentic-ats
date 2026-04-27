@@ -36,11 +36,16 @@ def set_highlights(db: Session, role_id: str, args: dict[str, Any]) -> dict[str,
     raw = args.get("candidate_ids") or []
     candidate_ids = [str(c) for c in raw if c]
     svc = _service(db)
-    row = svc.add_highlights(role_id, candidate_ids)
+    # set_highlights replaces the highlight set — the tool is designed to be
+    # the single source of truth for "what should be highlighted right now".
+    # Filter chaining ("from those…") is the LLM's responsibility: read the
+    # current state via get_ui_state, intersect with new search results,
+    # then call set_highlights with the intersection.
+    row = svc.replace_highlights(role_id, candidate_ids)
     state = svc.to_dict(row)
     return {
         "ui_state": state,
-        "mutation": {"type": "set_highlights", "add": candidate_ids, "remove": []},
+        "mutation": {"type": "set_highlights", "ids": candidate_ids},
     }
 
 
@@ -51,7 +56,7 @@ def remove_highlights(db: Session, role_id: str, args: dict[str, Any]) -> dict[s
     row = svc.remove_highlights(role_id, candidate_ids)
     return {
         "ui_state": svc.to_dict(row),
-        "mutation": {"type": "set_highlights", "add": [], "remove": candidate_ids},
+        "mutation": {"type": "remove_highlights", "ids": candidate_ids},
     }
 
 
