@@ -97,7 +97,7 @@ export default function CandidateModal({ roleId, candidate, onClose }) {
           <div className="modal-info-pane">
             <div className="modal-agg-banner">
               <span className="modal-agg-num">{fmtScore(display.aggregate_score)}</span>
-              <span className="modal-agg-denom">/ 5 aggregate</span>
+              <span className="modal-agg-denom">/ 10 aggregate</span>
               <span className={`pill pill-${display.status}`}>{display.status}</span>
             </div>
 

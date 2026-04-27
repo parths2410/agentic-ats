@@ -144,7 +144,7 @@ export default function ResumesTab({ roleId, batch, onStatus, onError, onSelect 
               </div>
               <div className="resume-score">
                 {fmtScore(c.aggregate_score)}
-                {c.aggregate_score != null && <span className="small"> / 5</span>}
+                {c.aggregate_score != null && <span className="small"> / 10</span>}
               </div>
               <span className={`pill pill-${c.status}`}>{c.status}</span>
               <button
