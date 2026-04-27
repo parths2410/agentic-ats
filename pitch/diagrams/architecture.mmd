@@ -1,0 +1,41 @@
+%% System architecture overview
+%% Render: mermaid-cli (`mmdc -i architecture.mmd -o architecture.svg`)
+%% or paste into https://mermaid.live
+
+flowchart LR
+    %% --- styling ---
+    classDef accent fill:#eef2ff,stroke:#4f46e5,stroke-width:2px,color:#0b0d12;
+    classDef warm   fill:#ecfeff,stroke:#0ea5a4,stroke-width:1.5px,color:#0b0d12;
+    classDef plain  fill:#ffffff,stroke:#c7cad1,stroke-width:1.4px,color:#0b0d12;
+    classDef mute   fill:#f7f8fa,stroke:#c7cad1,stroke-width:1.2px,stroke-dasharray:4 3,color:#4b5563;
+
+    Client["Client<br/>(React SPA · or Spine HRMS UI)"]:::plain
+
+    subgraph Backend["FastAPI backend"]
+        REST["REST routes<br/>roles · candidates · criteria · uploads"]:::plain
+        WSChat["/ws/.../chat<br/>(agentic chat)"]:::plain
+        WSProg["/ws/.../progress<br/>(pipeline events)"]:::plain
+        Chat["ChatService<br/>(agentic loop · max 5 iter)<br/>UIMutationsAccumulator"]:::accent
+        Reg["Tool registry<br/>12 tools · 7 read · 5 action"]:::plain
+        Pipe["Resume pipeline<br/>pdfplumber → OCR fallback<br/>→ LLM parse → LLM score<br/>stale_scores invariant"]:::warm
+    end
+
+    subgraph LLM["LLMProvider (ABC)"]
+        Anth["AnthropicProvider · today"]:::plain
+        Azure["AzureOpenAIProvider · next"]:::mute
+        Bedrock["BedrockProvider · next"]:::mute
+    end
+
+    DB[("SQLite (v1) → Postgres<br/>roles · candidates · criteria<br/>scores · chat_messages · ui_states")]:::plain
+
+    Client -- "HTTP + WS" --> REST
+    Client -- "WS" --> WSChat
+    Client -- "WS" --> WSProg
+    WSChat --> Chat
+    Chat --> Reg
+    Chat --> LLM
+    WSProg --> Pipe
+    Pipe --> LLM
+    Pipe --> DB
+    Reg --> DB
+    Chat --> DB

@@ -1,0 +1,2054 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Agentic ATS — Technical Deep Dive</title>
+<style>
+  :root {
+    --ink: #0b0d12;
+    --ink-2: #2a2f3a;
+    --muted: #6b7280;
+    --line: #e6e8ec;
+    --bg: #ffffff;
+    --bg-soft: #f7f8fa;
+    --code-bg: #0f1115;
+    --code-fg: #e6e8ec;
+    --code-mute: #8b93a3;
+    --accent: #4f46e5;
+    --accent-2: #0ea5a4;
+    --warn: #b45309;
+    --good: #047857;
+    --bad: #b91c1c;
+    --tag-r: #ecfdf5;
+    --tag-r-fg: #047857;
+    --tag-w: #fef3c7;
+    --tag-w-fg: #92400e;
+    --maxw: 920px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Header */
+  header.hero {
+    border-bottom: 1px solid var(--line);
+    padding: 80px 24px 64px;
+    background:
+      radial-gradient(900px 380px at 80% -10%, rgba(79,70,229,0.08), transparent 70%),
+      radial-gradient(700px 300px at 0% 0%, rgba(14,165,164,0.06), transparent 70%),
+      var(--bg);
+  }
+  header.hero .wrap { max-width: var(--maxw); margin: 0 auto; }
+  .kicker {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 12px;
+    color: var(--muted);
+    margin: 0 0 18px;
+    font-weight: 600;
+  }
+  header.hero h1 {
+    font-size: 44px;
+    line-height: 1.12;
+    margin: 0 0 18px;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+  header.hero .dek {
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    max-width: 780px;
+    margin: 0 0 28px;
+  }
+  .meta {
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .meta b { color: var(--ink-2); font-weight: 600; }
+
+  /* Layout */
+  main {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+  }
+  section { margin: 0 0 72px; scroll-margin-top: 24px; }
+  section > h2 {
+    font-size: 28px;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    font-weight: 700;
+  }
+  section > .lede {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0 0 28px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+  }
+  h3 {
+    font-size: 19px;
+    margin: 36px 0 10px;
+    letter-spacing: -0.005em;
+    font-weight: 650;
+  }
+  h4 { font-size: 15px; margin: 20px 0 8px; font-weight: 650; color: var(--ink-2); }
+  p { margin: 0 0 14px; }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; }
+  li { margin: 4px 0; }
+  strong { font-weight: 650; color: var(--ink); }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 48px 0; }
+
+  /* TOC */
+  .toc {
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin: 0 0 52px;
+  }
+  .toc-title {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .toc ol {
+    margin: 0;
+    padding-left: 20px;
+    columns: 2;
+    column-gap: 32px;
+    font-size: 14.5px;
+  }
+  .toc li { margin: 3px 0; }
+  .toc a { color: var(--ink-2); }
+
+  /* Code blocks */
+  figure.code {
+    margin: 18px 0 22px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--code-bg);
+  }
+  figure.code figcaption {
+    background: #181b22;
+    color: #aab1bf;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 12px;
+    padding: 8px 14px;
+    border-bottom: 1px solid #232732;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  figure.code figcaption .file { color: #c9cfdb; }
+  figure.code figcaption .lines { color: #6b7180; }
+  figure.code pre {
+    margin: 0;
+    padding: 16px 18px;
+    overflow-x: auto;
+    color: var(--code-fg);
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  /* Inline code */
+  code.k {
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 0.9em;
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: var(--ink);
+  }
+
+  /* Callouts */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: #f5f5fb;
+    padding: 14px 18px;
+    border-radius: 0 8px 8px 0;
+    margin: 22px 0;
+    font-size: 14.5px;
+  }
+  .callout.warn { border-left-color: var(--warn); background: #fdf6ec; }
+  .callout.good { border-left-color: var(--good); background: #effaf3; }
+  .callout .label {
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 6px;
+    display: block;
+  }
+  .callout.warn .label { color: var(--warn); }
+  .callout.good .label { color: var(--good); }
+
+  /* Tags */
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: ui-monospace, monospace;
+    font-weight: 600;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+  .tag.read { background: var(--tag-r); color: var(--tag-r-fg); }
+  .tag.write { background: var(--tag-w); color: var(--tag-w-fg); }
+
+  /* Tables */
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 22px;
+    font-size: 14px;
+  }
+  table.data th, table.data td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  table.data th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 700;
+    border-bottom: 2px solid var(--line);
+  }
+  table.data tr:hover { background: var(--bg-soft); }
+  table.data td code { font-family: ui-monospace, monospace; font-size: 12.5px; color: var(--ink); }
+
+  /* SVG figures */
+  figure.diagram {
+    margin: 22px 0 26px;
+    padding: 20px;
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    text-align: center;
+    overflow-x: auto;
+  }
+  figure.diagram figcaption {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  figure.diagram svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+
+  /* Pull stats */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin: 24px 0 8px;
+  }
+  .stat {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px;
+    background: var(--bg);
+  }
+  .stat .n { font-size: 28px; font-weight: 700; letter-spacing: -0.01em; }
+  .stat .l { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  /* Anchor link */
+  .anchor {
+    color: var(--muted);
+    margin-left: 8px;
+    text-decoration: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    font-weight: 400;
+  }
+  h2:hover .anchor, h3:hover .anchor { opacity: 1; }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 36px 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  @media (max-width: 720px) {
+    header.hero { padding: 56px 20px 40px; }
+    header.hero h1 { font-size: 32px; }
+    header.hero .dek { font-size: 17px; }
+    main { padding: 40px 20px 64px; }
+    .toc ol { columns: 1; }
+    section > h2 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="kicker">A technical deep dive · prepared for Spine Technologies</p>
+    <h1>Agentic ATS: an LLM-driven hiring engine, ready to slot into your HRMS.</h1>
+    <p class="dek">
+      A walkthrough of the five subsystems that make this product more than a thin wrapper around
+      a model API: the agentic chat loop, the LLM-to-app tool contract, the prompt strategy,
+      the resume&nbsp;→&nbsp;score pipeline, and the provider abstraction that lets the engine
+      run on Anthropic today and Azure OpenAI tomorrow without touching loop logic.
+    </p>
+    <div class="meta">
+      <span><b>Stack</b> · Python 3 · FastAPI · SQLAlchemy · Anthropic SDK · WebSockets · React 18 (reference UI)</span>
+      <span><b>Coverage</b> · backend 97% · frontend 94%</span>
+      <span><b>Posture</b> · acquihire / IP integration into Spine HRMS</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <nav class="toc" aria-label="Contents">
+    <div class="toc-title">Contents</div>
+    <ol>
+      <li><a href="#tldr">TL;DR &amp; integration thesis</a></li>
+      <li><a href="#overview">System overview</a></li>
+      <li><a href="#loop">The agentic loop</a></li>
+      <li><a href="#tools">The tool contract</a></li>
+      <li><a href="#prompts">Prompt strategy</a></li>
+      <li><a href="#pipeline">Resume → score pipeline</a></li>
+      <li><a href="#llm">LLM provider abstraction</a></li>
+      <li><a href="#realtime">Real-time protocol</a></li>
+      <li><a href="#data">Data model &amp; schema evolution</a></li>
+      <li><a href="#integration">Integration playbook for Spine</a></li>
+      <li><a href="#quality">Quality bar</a></li>
+      <li><a href="#roadmap">Roadmap &amp; what we'd build with you</a></li>
+    </ol>
+  </nav>
+
+  <!-- ====================== TL;DR ====================== -->
+  <section id="tldr">
+    <p class="lede">§ 1 · TL;DR</p>
+    <h2>What we built, and why it's worth slotting into Spine.<a href="#tldr" class="anchor">#</a></h2>
+
+    <p>
+      Agentic ATS is a working hiring assistant that ingests a job description, proposes scoring
+      criteria, parses any number of resume PDFs into structured profiles, scores each candidate
+      against those criteria with calibrated rationale, and then lets a recruiter <em>have a
+      conversation</em> with the resulting candidate pool — &ldquo;show me the senior backend
+      engineers from fintech&rdquo;, &ldquo;sort by Python depth&rdquo;, &ldquo;why is candidate X
+      ranked above Y?&rdquo; — driving real UI mutations through LLM tool calls, not regex.
+    </p>
+
+    <p>
+      The interesting engineering is not the chat. It's the <strong>five subsystems</strong> that
+      make the chat trustworthy and embeddable:
+    </p>
+    <ol>
+      <li>
+        An <strong>agentic loop</strong> that lives in the service layer (not inside the provider),
+        runs up to five LLM turns, executes tool calls between them, and folds all UI side-effects
+        from a turn into one atomic mutation payload.
+      </li>
+      <li>
+        A <strong>tool contract</strong> (definitions / read tools / action tools / registry) that
+        is the only surface the LLM uses to read or change application state — making the system
+        auditable and easy to extend with HRMS-specific tools (<code class="k">schedule_interview</code>,
+        <code class="k">advance_to_round_2</code>, <code class="k">send_offer_letter</code>).
+      </li>
+      <li>
+        A <strong>prompt strategy</strong> with four hand-written, schema-anchored prompts (criteria
+        extraction, resume parsing, candidate scoring, and a tool-aware chat system prompt) versioned
+        as Python modules in the repo, not in a vendor console.
+      </li>
+      <li>
+        A <strong>resume pipeline</strong> with pdfplumber → OCR fallback → LLM structuring → LLM
+        scoring, plus a <code class="k">stale_scores</code> invariant that guarantees the rank
+        you see is never from a previous criteria set.
+      </li>
+      <li>
+        An <strong>LLM provider abstraction</strong> — a four-method ABC — so the entire system can
+        be repointed at Azure OpenAI or Bedrock by writing one new file. (Important for a
+        Microsoft-stack acquirer.)
+      </li>
+    </ol>
+
+    <div class="callout">
+      <span class="label">The acquirer's question, answered up front</span>
+      <strong>What does Spine actually get on day one?</strong> A Python service with a clean HTTP +
+      WebSocket contract, 97% backend test coverage, four LLM prompts that are already production-grade,
+      and an architecture where adding HR-specific behaviour is a matter of writing a 30-line tool
+      function — not rewriting the loop.
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="n">5</div><div class="l">subsystems we'll deep-dive</div></div>
+      <div class="stat"><div class="n">12</div><div class="l">tools exposed to the LLM today</div></div>
+      <div class="stat"><div class="n">4</div><div class="l">prompts (versioned, in-repo)</div></div>
+      <div class="stat"><div class="n">216</div><div class="l">backend tests · 97% coverage</div></div>
+    </div>
+  </section>
+
+  <!-- ====================== OVERVIEW ====================== -->
+  <section id="overview">
+    <p class="lede">§ 2 · System overview</p>
+    <h2>One picture, then we go deep.<a href="#overview" class="anchor">#</a></h2>
+
+    <p>
+      The system is a stateless React SPA over a Python/FastAPI backend. The backend owns three things
+      that matter: the <strong>chat service</strong> (where the agentic loop lives), the <strong>resume
+      pipeline</strong> (where PDFs become scored candidates), and the <strong>LLM provider</strong>
+      (a thin, swappable adapter). All three converge on a single SQLite database in v1; the schema
+      is Postgres-ready and the migration path is well understood.
+    </p>
+
+    <figure class="diagram" aria-label="System architecture">
+      <svg viewBox="0 0 880 480" xmlns="http://www.w3.org/2000/svg" role="img">
+        <defs>
+          <marker id="arr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" fill="#4f46e5"/>
+          </marker>
+          <marker id="arr2" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" fill="#6b7280"/>
+          </marker>
+        </defs>
+        <style>
+          .b { fill: #ffffff; stroke: #c7cad1; stroke-width: 1.4; }
+          .b-accent { fill: #eef2ff; stroke: #4f46e5; stroke-width: 1.6; }
+          .b-warm { fill: #ecfeff; stroke: #0ea5a4; stroke-width: 1.4; }
+          .b-mute { fill: #f7f8fa; stroke: #c7cad1; stroke-width: 1.2; stroke-dasharray: 4 3; }
+          .t { font: 600 13px -apple-system, "Inter", sans-serif; fill: #0b0d12; }
+          .t-sm { font: 500 11px -apple-system, "Inter", sans-serif; fill: #4b5563; }
+          .t-lab { font: 600 11px ui-monospace, monospace; fill: #6b7280; }
+          .ed { stroke: #4f46e5; stroke-width: 1.6; fill: none; }
+          .ed-mute { stroke: #6b7280; stroke-width: 1.2; fill: none; stroke-dasharray: 4 3; }
+        </style>
+
+        <!-- Client -->
+        <rect class="b" x="20" y="40" width="180" height="90" rx="8"/>
+        <text class="t" x="110" y="70" text-anchor="middle">Client</text>
+        <text class="t-sm" x="110" y="90" text-anchor="middle">React SPA (reference)</text>
+        <text class="t-sm" x="110" y="106" text-anchor="middle">— or Spine HRMS UI —</text>
+
+        <!-- Edge: HTTP + WS -->
+        <line class="ed" x1="200" y1="85" x2="270" y2="85" marker-end="url(#arr)"/>
+        <text class="t-lab" x="235" y="76" text-anchor="middle">HTTP + WS</text>
+
+        <!-- FastAPI -->
+        <rect class="b-accent" x="270" y="20" width="280" height="430" rx="10"/>
+        <text class="t" x="410" y="44" text-anchor="middle">FastAPI backend</text>
+
+        <!-- REST routes -->
+        <rect class="b" x="290" y="60" width="240" height="50" rx="6"/>
+        <text class="t" x="410" y="80" text-anchor="middle">REST routes</text>
+        <text class="t-sm" x="410" y="98" text-anchor="middle">roles · candidates · criteria · uploads</text>
+
+        <!-- WS endpoints -->
+        <rect class="b" x="290" y="120" width="115" height="50" rx="6"/>
+        <text class="t" x="347" y="140" text-anchor="middle">/ws/.../chat</text>
+        <text class="t-sm" x="347" y="156" text-anchor="middle">agentic chat</text>
+
+        <rect class="b" x="415" y="120" width="115" height="50" rx="6"/>
+        <text class="t" x="472" y="140" text-anchor="middle">/ws/.../progress</text>
+        <text class="t-sm" x="472" y="156" text-anchor="middle">pipeline events</text>
+
+        <!-- ChatService -->
+        <rect class="b-accent" x="290" y="190" width="240" height="80" rx="6"/>
+        <text class="t" x="410" y="212" text-anchor="middle">ChatService (agentic loop)</text>
+        <text class="t-sm" x="410" y="230" text-anchor="middle">max 5 iterations · tool dispatch</text>
+        <text class="t-sm" x="410" y="246" text-anchor="middle">UIMutationsAccumulator</text>
+        <text class="t-sm" x="410" y="262" text-anchor="middle">streams tool_status events</text>
+
+        <!-- Tool registry -->
+        <rect class="b" x="290" y="280" width="240" height="55" rx="6"/>
+        <text class="t" x="410" y="300" text-anchor="middle">Tool registry</text>
+        <text class="t-sm" x="410" y="318" text-anchor="middle">12 tools · 7 read · 5 action</text>
+
+        <!-- Resume pipeline -->
+        <rect class="b-warm" x="290" y="345" width="240" height="85" rx="6"/>
+        <text class="t" x="410" y="367" text-anchor="middle">Resume pipeline</text>
+        <text class="t-sm" x="410" y="385" text-anchor="middle">pdfplumber → OCR fallback</text>
+        <text class="t-sm" x="410" y="401" text-anchor="middle">→ LLM parse → LLM score</text>
+        <text class="t-sm" x="410" y="417" text-anchor="middle">stale_scores invariant</text>
+
+        <!-- LLM Provider -->
+        <rect class="b-accent" x="600" y="100" width="260" height="200" rx="10"/>
+        <text class="t" x="730" y="124" text-anchor="middle">LLMProvider (ABC)</text>
+        <text class="t-sm" x="730" y="142" text-anchor="middle">extract_criteria · parse_resume</text>
+        <text class="t-sm" x="730" y="158" text-anchor="middle">score_candidate · chat</text>
+
+        <rect class="b" x="620" y="180" width="220" height="32" rx="5"/>
+        <text class="t-sm" x="730" y="201" text-anchor="middle">AnthropicProvider — today</text>
+
+        <rect class="b-mute" x="620" y="220" width="220" height="32" rx="5"/>
+        <text class="t-sm" x="730" y="241" text-anchor="middle">AzureOpenAIProvider — next</text>
+
+        <rect class="b-mute" x="620" y="260" width="220" height="32" rx="5"/>
+        <text class="t-sm" x="730" y="281" text-anchor="middle">BedrockProvider — next</text>
+
+        <!-- DB -->
+        <rect class="b" x="600" y="360" width="260" height="70" rx="10"/>
+        <text class="t" x="730" y="385" text-anchor="middle">SQLite (v1) → Postgres</text>
+        <text class="t-sm" x="730" y="403" text-anchor="middle">Roles · Candidates · Criteria</text>
+        <text class="t-sm" x="730" y="419" text-anchor="middle">Scores · ChatMessages · UIState</text>
+
+        <!-- Edges -->
+        <line class="ed" x1="410" y1="270" x2="410" y2="280" marker-end="url(#arr)"/>
+        <line class="ed" x1="530" y1="220" x2="600" y2="200" marker-end="url(#arr)"/>
+        <line class="ed" x1="530" y1="385" x2="600" y2="395" marker-end="url(#arr)"/>
+        <line class="ed-mute" x1="530" y1="240" x2="600" y2="240" marker-end="url(#arr2)"/>
+        <line class="ed-mute" x1="530" y1="305" x2="600" y2="395" marker-end="url(#arr2)"/>
+
+      </svg>
+      <figcaption>Agentic ATS — system overview. The loop, tools, and prompts all sit between
+        the WebSocket boundary and the swappable LLMProvider.</figcaption>
+    </figure>
+
+    <p>
+      The blue boxes are the value: <strong>ChatService</strong>, the <strong>tool registry</strong>,
+      and the <strong>provider ABC</strong>. The dashed boxes are the parts of the abstraction we
+      have already designed for but not yet implemented (Azure OpenAI, Bedrock). Everything below
+      this section is about earning each of those boxes.
+    </p>
+  </section>
+
+  <!-- ====================== AGENTIC LOOP ====================== -->
+  <section id="loop">
+    <p class="lede">§ 3 · The agentic loop</p>
+    <h2>Why the loop lives in the service, not the provider.<a href="#loop" class="anchor">#</a></h2>
+
+    <p>
+      The most common mistake we see in agentic codebases is letting the LLM SDK own the loop.
+      The Anthropic SDK has a <code class="k">tools</code> parameter; you pass it tools and it
+      calls them for you in some helpers. Convenient — and the moment you swap providers, your
+      whole orchestration goes with it. Worse: you can no longer interpose between turns to
+      stream <code class="k">tool_status</code> events, accumulate UI mutations, or enforce a
+      hard iteration cap.
+    </p>
+
+    <p>
+      Our split is precise: <code class="k">LLMProvider.chat()</code> handles a <em>single</em>
+      LLM turn — messages in, text-or-tool-calls out. The loop itself lives in
+      <code class="k">ChatService.handle_message</code>. Provider swaps don't touch loop logic.
+      Tool dispatch, mutation accumulation, iteration cap, and event streaming all live in one
+      place that is fully unit-tested.
+    </p>
+
+    <h3>The loop, in one diagram</h3>
+
+    <figure class="diagram" aria-label="Agentic loop sequence">
+      <svg viewBox="0 0 860 460" xmlns="http://www.w3.org/2000/svg" role="img">
+        <defs>
+          <marker id="arr3" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" fill="#4f46e5"/>
+          </marker>
+          <marker id="arr4" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" fill="#0ea5a4"/>
+          </marker>
+        </defs>
+        <style>
+          .lane { fill: #f7f8fa; stroke: #e6e8ec; }
+          .laneL { font: 600 12px -apple-system, "Inter", sans-serif; fill: #4b5563; }
+          .lifeline { stroke: #c7cad1; stroke-width: 1; stroke-dasharray: 3 3; }
+          .ev { font: 500 11px -apple-system, "Inter", sans-serif; fill: #0b0d12; }
+          .a-ed { stroke: #4f46e5; stroke-width: 1.6; fill: none; }
+          .a-ed2 { stroke: #0ea5a4; stroke-width: 1.6; fill: none; }
+          .a-box { fill: #ffffff; stroke: #c7cad1; }
+          .a-box-h { fill: #eef2ff; stroke: #4f46e5; }
+          .note { fill: #fff7ed; stroke: #fb923c; stroke-width: 1; }
+          .noteT { font: 500 11px -apple-system, "Inter", sans-serif; fill: #7c2d12; }
+        </style>
+
+        <!-- Lane labels -->
+        <rect class="lane" x="20"  y="20" width="140" height="34" rx="4"/>
+        <text class="laneL" x="90" y="42" text-anchor="middle">User / WS</text>
+        <rect class="lane" x="180" y="20" width="170" height="34" rx="4"/>
+        <text class="laneL" x="265" y="42" text-anchor="middle">ChatService</text>
+        <rect class="lane" x="370" y="20" width="180" height="34" rx="4"/>
+        <text class="laneL" x="460" y="42" text-anchor="middle">LLMProvider.chat()</text>
+        <rect class="lane" x="570" y="20" width="160" height="34" rx="4"/>
+        <text class="laneL" x="650" y="42" text-anchor="middle">Tool registry</text>
+        <rect class="lane" x="745" y="20" width="105" height="34" rx="4"/>
+        <text class="laneL" x="797" y="42" text-anchor="middle">Accumulator</text>
+
+        <!-- lifelines -->
+        <line class="lifeline" x1="90"  y1="60" x2="90"  y2="440"/>
+        <line class="lifeline" x1="265" y1="60" x2="265" y2="440"/>
+        <line class="lifeline" x1="460" y1="60" x2="460" y2="440"/>
+        <line class="lifeline" x1="650" y1="60" x2="650" y2="440"/>
+        <line class="lifeline" x1="797" y1="60" x2="797" y2="440"/>
+
+        <!-- 1 user message -->
+        <line class="a-ed" x1="90" y1="80" x2="265" y2="80" marker-end="url(#arr3)"/>
+        <text class="ev" x="178" y="74" text-anchor="middle">chat_message</text>
+
+        <!-- 2 persist + load history -->
+        <rect class="a-box-h" x="190" y="92" width="150" height="22" rx="4"/>
+        <text class="ev" x="265" y="107" text-anchor="middle">persist user msg, build prompt</text>
+
+        <!-- 3 chat() iter 1 -->
+        <line class="a-ed" x1="265" y1="135" x2="460" y2="135" marker-end="url(#arr3)"/>
+        <text class="ev" x="362" y="129" text-anchor="middle">chat(history, tools, sys)</text>
+
+        <line class="a-ed" x1="460" y1="160" x2="265" y2="160" marker-end="url(#arr3)"/>
+        <text class="ev" x="362" y="154" text-anchor="middle">tool_calls=[search_candidates, set_highlights]</text>
+
+        <!-- 4 dispatch -->
+        <line class="a-ed2" x1="265" y1="185" x2="650" y2="185" marker-end="url(#arr4)"/>
+        <text class="ev" x="450" y="179" text-anchor="middle">execute(...) per call</text>
+
+        <line class="a-ed2" x1="650" y1="208" x2="265" y2="208" marker-end="url(#arr4)"/>
+        <text class="ev" x="450" y="202" text-anchor="middle">{result, mutation?} per call</text>
+
+        <!-- 5 stream tool_status -->
+        <line class="a-ed" x1="265" y1="232" x2="90" y2="232" marker-end="url(#arr3)"/>
+        <text class="ev" x="178" y="226" text-anchor="middle">tool_status (executing → complete)</text>
+
+        <!-- 6 accumulator -->
+        <line class="a-ed" x1="265" y1="256" x2="797" y2="256" marker-end="url(#arr3)"/>
+        <text class="ev" x="530" y="250" text-anchor="middle">merge mutation</text>
+
+        <!-- 7 chat() iter 2 -->
+        <line class="a-ed" x1="265" y1="288" x2="460" y2="288" marker-end="url(#arr3)"/>
+        <text class="ev" x="362" y="282" text-anchor="middle">chat(history += tool results)</text>
+
+        <line class="a-ed" x1="460" y1="312" x2="265" y2="312" marker-end="url(#arr3)"/>
+        <text class="ev" x="362" y="306" text-anchor="middle">final text, no tool_calls</text>
+
+        <!-- 8 emit chat_complete -->
+        <rect class="a-box-h" x="190" y="332" width="150" height="22" rx="4"/>
+        <text class="ev" x="265" y="347" text-anchor="middle">persist assistant msg</text>
+
+        <line class="a-ed" x1="265" y1="370" x2="90" y2="370" marker-end="url(#arr3)"/>
+        <text class="ev" x="178" y="364" text-anchor="middle">chat_complete { text, ui_mutations }</text>
+
+        <!-- note -->
+        <rect class="note" x="540" y="382" width="290" height="50" rx="4"/>
+        <text class="noteT" x="685" y="402" text-anchor="middle">If iteration == MAX_ITERATIONS (5) and the</text>
+        <text class="noteT" x="685" y="416" text-anchor="middle">model still wants to call a tool, we break</text>
+        <text class="noteT" x="685" y="430" text-anchor="middle">with truncated=True. No infinite loops, ever.</text>
+      </svg>
+      <figcaption>One chat turn from the user's message to the final <code>chat_complete</code> frame.
+        The LLM is invoked twice: once to plan tool calls, once to write the final answer.</figcaption>
+    </figure>
+
+    <h3>The loop in code</h3>
+
+    <p>
+      Below is the actual <code class="k">handle_message</code> method. Two things to notice:
+      first, the loop body is small — most of the complexity is in the helpers it delegates to.
+      Second, there is exactly one place where iteration is capped, and one place where mutations
+      are merged. There are no hidden control paths.
+    </p>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/services/chat_service.py</span> <span class="lines">handle_message · pseudocode</span></figcaption>
+<pre><code>function handle_message(role_id, user_message):
+
+  # Persist the user message immediately so history reflects it even
+  # if the assistant turn fails partway.
+  persist ChatMessage(role_id, "user", user_message)
+
+  history     := load_history(role_id) → LLM message format
+  system      := build_system_prompt(role)
+  tool_defs   := registry.definitions()
+
+  invocations := []
+  mutations   := new UIMutationsAccumulator()
+  truncated   := false
+
+  for iteration in 1..MAX_ITERATIONS:
+      response := llm.chat(history, tool_defs, system)
+
+      if response has no tool_calls:
+          break                                  # model wrote a final answer
+
+      append assistant turn (with tool_calls) to history
+
+      results := execute_calls(response.tool_calls, on_tool_status)
+
+      for (call, (result, summary)) in zip(calls, results):
+          invocations.append(call, result, summary)
+          if call.name in ACTION_TOOL_NAMES and result.mutation is a dict:
+              mutations.merge(result.mutation)
+          append tool result to history (role="tool", tool_call_id=call.id)
+
+      if iteration == MAX_ITERATIONS:
+          truncated := true
+          break
+
+  ui_mutations := mutations.to_dict() if mutations.has_changes else null
+
+  persist ChatMessage(role_id, "assistant", final_text, ui_mutations)
+
+  return { text, invocations, ui_mutations, iterations, truncated }
+</code></pre>
+    </figure>
+
+    <div class="callout">
+      <span class="label">Design note · why MAX_ITERATIONS = 5</span>
+      Empirically, every legitimate user query in this domain — even compound ones like
+      <em>&ldquo;sort by Python depth, then highlight the top 5 with fintech experience&rdquo;</em>
+      — resolves in ≤ 3 iterations. Five gives headroom for one self-correction without ever
+      letting the model thrash. When the cap is hit we surface <code class="k">truncated: true</code>
+      to the client; the UI can then offer the user a follow-up button.
+    </div>
+
+    <h3>Tool dispatch, with first-class observability</h3>
+
+    <p>
+      The <code class="k">_execute_calls</code> helper is what fans the LLM's tool calls out to
+      our registry. Two design points:
+    </p>
+    <ol>
+      <li>
+        Tool errors do not raise — they are returned to the LLM as a structured result. The model
+        can then read the error, decide to try a different tool, or apologise to the user. This
+        keeps the loop crash-free even with a buggy tool.
+      </li>
+      <li>
+        Each call emits two <code class="k">tool_status</code> WebSocket events
+        (<code class="k">executing</code>, then <code class="k">complete</code> with a one-line
+        summary). The reference UI uses these to render a live &ldquo;the assistant is searching
+        candidates by skills…&rdquo; ticker. Spine HRMS could surface the same.
+      </li>
+    </ol>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/services/chat_service.py</span> <span class="lines">_execute_calls · pseudocode</span></figcaption>
+<pre><code>function execute_calls(role_id, tool_calls, on_tool_status, iteration):
+
+  # Serial today: action tools share a DB session; parallel writers
+  # would race on commit. Tool calls are short, so the savings
+  # aren't worth the session-management cost yet.
+
+  results := []
+  for call in tool_calls:
+      emit tool_status(iteration, call.name, status="executing")
+
+      try:
+          result := registry.execute(call.name, call.arguments, db, role_id)
+      catch any error e:
+          log "tool %s failed", call.name
+          result := { error: "tool execution failed: " + str(e) }
+                                                 # → returned to LLM, not raised
+
+      summary := summarize(call.name, result)
+      emit tool_status(iteration, call.name, status="complete", summary)
+      results.append((result, summary))
+
+  return results
+</code></pre>
+    </figure>
+
+    <div class="callout warn">
+      <span class="label">Honesty note</span>
+      Tool calls are dispatched <em>serially</em> today, not in parallel. The LLM rarely emits
+      more than 2 tool calls per turn, and parallel SQLAlchemy writes would race on commit, so
+      the savings aren't worth the session-management cost yet. The contract supports parallel
+      dispatch — we have the asyncio scaffolding — and switching is a one-method change behind
+      a per-tool &ldquo;mutates state?&rdquo; flag we already track.
+    </div>
+
+    <h3>The mutation accumulator: many tool calls, one UI update</h3>
+
+    <p>
+      Here is a subtlety that turns out to matter. Within a single chat turn the LLM might call
+      <code class="k">remove_highlights([A, B])</code>, then later call <code class="k">set_highlights([C, D, E])</code>.
+      Naïvely, the UI would receive two messages and flicker. Worse, the semantics of the second
+      call (&ldquo;replace the set&rdquo;) would override the first (&ldquo;remove from the set&rdquo;) —
+      so the right thing for the UI to do is just apply the final set. Generalising this for every
+      pair of action tools is the job of the <code class="k">UIMutationsAccumulator</code>.
+    </p>
+
+    <p>
+      The accumulator collapses any number of action-tool mutations from a single turn into one
+      payload. Highlight semantics are subtle:
+    </p>
+    <ul>
+      <li><code class="k">set_highlights</code> <strong>replaces</strong> the highlight set. (See commit <code class="k">847099d</code> — older docs incorrectly described this as additive; the tool now does exactly what its name says.)</li>
+      <li><code class="k">remove_highlights</code> <em>before</em> any <code class="k">set</code> in the turn is recorded as a delta against whatever the frontend currently shows.</li>
+      <li><code class="k">remove_highlights</code> <em>after</em> a <code class="k">set</code> in the turn is folded directly into the target set.</li>
+      <li><code class="k">clear_highlights</code> empties everything; <code class="k">set_sort</code> and <code class="k">reset_ui</code> are last-write-wins.</li>
+    </ul>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/services/chat_service.py</span> <span class="lines">UIMutationsAccumulator · pseudocode</span></figcaption>
+<pre><code>class UIMutationsAccumulator:
+
+  # Folds individual action-tool mutations from one chat turn into a
+  # single UI payload. Highlight semantics:
+  #
+  #   set_highlights     REPLACES the set. Subsequent removes target
+  #                      this same set.
+  #   remove_highlights  BEFORE any set is a delta against whatever
+  #                      the frontend currently shows.
+  #   clear_highlights   empties the set.
+  #   set_sort, reset_ui are last-write-wins.
+
+  state:
+      target_set    : list of ids   | null         # canonical "after" set
+      delta_remove  : list of ids                   # used only when no set this turn
+      sort_field    : string        | null
+      sort_order    : "asc" | "desc"
+      cleared       : bool
+      reset         : bool
+
+  merge(mutation):
+      switch mutation.type:
+
+          case "set_highlights":
+              target_set    := dedup(mutation.ids)
+              delta_remove  := []                   # set overrides earlier deltas
+              cleared       := false                # set overrides earlier clear
+
+          case "remove_highlights":
+              if target_set != null:
+                  remove ids from target_set in place
+              else:
+                  append novel ids to delta_remove  # delta against frontend
+
+          case "clear_highlights":
+              target_set    := null
+              delta_remove  := []
+              cleared       := true
+
+          case "set_sort":
+              sort_field    := mutation.field
+              sort_order    := mutation.order or "desc"
+
+          case "reset_ui":
+              clear everything; reset := true
+
+  to_dict() returns:
+      {
+        reset?            : true,                   # mutually exclusive
+        clear_highlights? : true,                   # with reset
+        highlights?       : { set:    [...] }
+                          | { remove: [...] },
+        re_sort?          : { field, order }
+      }
+</code></pre>
+    </figure>
+
+    <h4>Worked example: filter chaining</h4>
+    <p>
+      User says: &ldquo;<em>highlight the senior engineers, then keep only the ones with fintech experience.</em>&rdquo;
+      The LLM reasonably emits:
+    </p>
+<pre style="background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-family:ui-monospace,monospace;font-size:13px;line-height:1.6;color:var(--ink);overflow-x:auto;">
+turn N — tool calls:
+  1. set_highlights(ids=[a, b, c, d, e])              # five seniors
+  2. get_ui_state()                                   # read for chaining
+  3. search_candidates(field=skills, query="fintech") # finds [b, c, x, y]
+  4. set_highlights(ids=[b, c])                       # intersection
+
+accumulator state after turn:
+  target_set = [b, c]
+  → final ui_mutations = { "highlights": { "set": ["b", "c"] } }
+
+# the UI receives ONE replace, not four mutations.
+</pre>
+
+    <p>
+      The accumulator is what makes the agentic loop ergonomic for an HRMS UI: complex
+      multi-step reasoning collapses into one atomic state delta the UI can render in a single
+      frame.
+    </p>
+  </section>
+
+  <!-- ====================== TOOL CONTRACT ====================== -->
+  <section id="tools">
+    <p class="lede">§ 4 · The tool contract</p>
+    <h2>The only surface the LLM uses to read or change application state.<a href="#tools" class="anchor">#</a></h2>
+
+    <p>
+      A tool, in our world, is a JSON-schema-described function the LLM is allowed to call.
+      Adding a new HRMS-specific capability — &ldquo;schedule an interview slot&rdquo;,
+      &ldquo;send the offer letter PDF&rdquo;, &ldquo;move candidate to round 2&rdquo; — is a
+      matter of writing one schema, one Python function, and one registry entry. Three files,
+      no loop changes, no prompt changes.
+    </p>
+
+    <h3>Today's tool taxonomy</h3>
+    <p>
+      The 12 tools split into two categories:
+      <span class="tag read">read</span> tools query state and never mutate;
+      <span class="tag write">action</span> tools mutate UI state and return a
+      <code class="k">mutation</code> object that the accumulator folds into the final payload.
+    </p>
+
+    <table class="data">
+      <thead>
+        <tr><th>Tool</th><th>Kind</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>get_candidates</code></td>             <td><span class="tag read">read</span></td><td>List candidates with rank, score, and basic profile.</td></tr>
+        <tr><td><code>get_candidate_detail</code></td>       <td><span class="tag read">read</span></td><td>Full structured profile for one candidate.</td></tr>
+        <tr><td><code>get_candidate_raw_text</code></td>     <td><span class="tag read">read</span></td><td>Original resume text — for nuance the structured profile loses.</td></tr>
+        <tr><td><code>get_candidate_scores</code></td>       <td><span class="tag read">read</span></td><td>Per-criterion scores + rationale for one candidate.</td></tr>
+        <tr><td><code>search_candidates</code></td>          <td><span class="tag read">read</span></td><td>Substring search over a chosen profile field.</td></tr>
+        <tr><td><code>compute_stats</code></td>              <td><span class="tag read">read</span></td><td>Aggregate stats over the candidate pool.</td></tr>
+        <tr><td><code>get_ui_state</code></td>               <td><span class="tag read">read</span></td><td>Current highlights + sort — the LLM reads this for filter chaining.</td></tr>
+        <tr><td><code>set_highlights</code></td>             <td><span class="tag write">action</span></td><td>Replace the highlight set with exactly these IDs.</td></tr>
+        <tr><td><code>remove_highlights</code></td>          <td><span class="tag write">action</span></td><td>Remove specific IDs from the current highlight set.</td></tr>
+        <tr><td><code>clear_highlights</code></td>           <td><span class="tag write">action</span></td><td>Empty the highlight set.</td></tr>
+        <tr><td><code>set_sort</code></td>                   <td><span class="tag write">action</span></td><td>Re-sort by aggregate or any criterion name.</td></tr>
+        <tr><td><code>reset_ui</code></td>                   <td><span class="tag write">action</span></td><td>Drop highlights + sort back to defaults.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>The four-file split, and why it pays off</h3>
+    <p>
+      Tools live under <code class="k">backend/app/tools/</code>, deliberately fragmented by
+      concern:
+    </p>
+    <ul>
+      <li><code class="k">definitions.py</code> — the JSON schemas exposed to the LLM, plus a
+        <code class="k">ACTION_TOOL_NAMES</code> set used by the loop to detect mutations.</li>
+      <li><code class="k">data_tools.py</code> — read-only executors. Pure functions of
+        <code class="k">(db, role_id, args)</code>. Easy to test, easy to reason about, no commits.</li>
+      <li><code class="k">action_tools.py</code> — mutation executors. Same signature; each returns a
+        <code class="k">mutation</code> object alongside its data result.</li>
+      <li><code class="k">registry.py</code> — name → executor dispatch.</li>
+    </ul>
+    <p>
+      This split is why a Spine engineer can add a new HR tool in an afternoon: write the schema,
+      write the executor with the same shape as everything else in the file, register it. The
+      LLM picks it up automatically on the next chat turn — system prompts already advertise
+      <code class="k">self.registry.definitions()</code>.
+    </p>
+
+    <h3>Two real schemas, verbatim</h3>
+
+    <p>
+      The schema is what the LLM <em>sees</em>. Everything we want it to know — including
+      anti-patterns we want it to avoid — lives in the <code class="k">description</code>. Below
+      is <code class="k">set_highlights</code>: notice how much we say about the difference
+      between candidate <code class="k">id</code> (UUID) and <code class="k">rank</code> (integer).
+      That description was added after we caught the LLM passing rank numbers when filter-chaining;
+      it has not slipped since.
+    </p>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/tools/definitions.py</span> <span class="lines">L187–216 · SET_HIGHLIGHTS</span></figcaption>
+<pre><code>SET_HIGHLIGHTS: dict[str, Any] = {
+    "name": "set_highlights",
+    "description": (
+        "Replace the highlighted-candidates set with exactly these IDs. This is "
+        "the single source of truth for what is highlighted right now — calling "
+        "it does NOT add to the existing set, it overwrites it. Use this for any "
+        "filter/highlight/shortlist request. For filter chaining ('from those…'), "
+        "first call get_ui_state to read the current highlight set, then intersect "
+        "with your new search results, then call set_highlights with that "
+        "intersection. To clear all highlights, call clear_highlights instead. "
+        "Never claim to remove or hide candidates — only highlight matches. "
+        "IMPORTANT: pass the candidate's `id` field from get_candidates (a UUID "
+        "string like 'd91eebc3-de25-…'), NOT the `rank` integer."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "candidate_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": (
+                    "The complete list of candidate UUIDs (from the `id` field "
+                    "of get_candidates) that should be highlighted after this "
+                    "call. Do NOT pass rank numbers."
+                ),
+            },
+        },
+        "required": ["candidate_ids"],
+    },
+}
+</code></pre>
+    </figure>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/tools/definitions.py</span> <span class="lines">L105–125 · SEARCH_CANDIDATES</span></figcaption>
+<pre><code>SEARCH_CANDIDATES: dict[str, Any] = {
+    "name": "search_candidates",
+    "description": (
+        "Find candidates whose profile matches a query in a given field. "
+        "Field options: 'skills', 'companies', 'titles', 'education', "
+        "'location', 'text' (full-text over the raw resume). Returns matches "
+        "with short excerpts."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "field": {
+                "type": "string",
+                "enum": ["skills", "companies", "titles", "education", "location", "text"],
+            },
+            "query": {"type": "string", "minLength": 1},
+            "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50},
+        },
+        "required": ["field", "query"],
+    },
+}
+</code></pre>
+    </figure>
+
+    <h3>The registry: one map, one dispatcher</h3>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/tools/registry.py</span> <span class="lines">registry · pseudocode</span></figcaption>
+<pre><code>EXECUTORS := {
+    "get_candidates":         data_tools.get_candidates,
+    "get_candidate_detail":   data_tools.get_candidate_detail,
+    "get_candidate_raw_text": data_tools.get_candidate_raw_text,
+    "get_candidate_scores":   data_tools.get_candidate_scores,
+    "search_candidates":      data_tools.search_candidates,
+    "compute_stats":          data_tools.compute_stats,
+    "get_ui_state":           data_tools.get_ui_state,
+    # action tools
+    "set_highlights":         action_tools.set_highlights,
+    "remove_highlights":      action_tools.remove_highlights,
+    "clear_highlights":       action_tools.clear_highlights,
+    "set_sort":               action_tools.set_sort,
+    "reset_ui":               action_tools.reset_ui,
+}
+
+execute(name, args, db, role_id):
+    fn := EXECUTORS[name] or raise UnknownToolError(name)
+    return fn(db, role_id, args or {})
+</code></pre>
+    </figure>
+
+    <h3>Two real executors, verbatim</h3>
+
+    <p>A read-only executor — pure function, returns data:</p>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/tools/data_tools.py</span> <span class="lines">search_candidates · pseudocode</span></figcaption>
+<pre><code>function search_candidates(db, role_id, args):
+    field := args.field.lower()
+    query := args.query.strip()
+    limit := args.limit or 50
+
+    if field empty or query empty:
+        return { error: "field and query are required", matches: [] }
+
+    matches := []
+    for candidate in all_candidates(db, role_id):
+        text := join profile fields for `field` from candidate
+        if text is empty: continue
+
+        if query (case-insensitive) appears in text:
+            matches.append({
+                candidate_id, name, rank, aggregate_score,
+                excerpt: ~80 chars around the match,
+            })
+            if len(matches) >= limit: break
+
+    return { field, query, match_count: len(matches), matches }
+</code></pre>
+    </figure>
+
+    <p>And an action executor — same signature, but the return shape carries a <code class="k">mutation</code>:</p>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/tools/action_tools.py</span> <span class="lines">set_highlights · pseudocode</span></figcaption>
+<pre><code>function set_highlights(db, role_id, args):
+    ids := normalise(args.candidate_ids)         # strings, drop empties
+
+    # Replace semantics: this tool is the single source of truth for
+    # "what should be highlighted right now". Filter chaining is the
+    # LLM's responsibility — it reads get_ui_state, intersects, then
+    # calls us with the intersection.
+    ui_state := UIStateService.replace_highlights(role_id, ids)
+
+    return {
+        ui_state: ui_state,                      # → back to the LLM next turn
+        mutation: { type: "set_highlights", ids } # → to the accumulator
+    }
+</code></pre>
+    </figure>
+
+    <p>
+      Two return keys: <code class="k">ui_state</code> goes back to the LLM so subsequent reasoning
+      sees fresh state, and <code class="k">mutation</code> is what the accumulator folds into the
+      final UI payload. This dual-channel shape is the small piece of design that lets the LLM
+      think correctly while we keep the UI updates tidy.
+    </p>
+
+    <div class="callout good">
+      <span class="label">For Spine</span>
+      The same shape generalises directly to HRMS actions. A <code class="k">schedule_interview</code>
+      tool would mutate Spine's calendar/interview tables and return
+      <code class="k">{interview, mutation: {type: "interview_scheduled", ...}}</code>. Whatever
+      Spine's UI uses — Blazor, Angular, server-rendered — would receive that mutation alongside
+      the assistant's text response, in the same WebSocket frame.
+    </div>
+  </section>
+
+  <!-- ====================== PROMPTS ====================== -->
+  <section id="prompts">
+    <p class="lede">§ 5 · Prompt strategy</p>
+    <h2>Four prompts, all in-repo, all schema-anchored.<a href="#prompts" class="anchor">#</a></h2>
+
+    <p>
+      Prompts are code. We treat them like code: they live as Python modules under
+      <code class="k">backend/app/llm/prompts/</code>, they're versioned with the rest of the
+      codebase, and they're imported by the services that need them. Nothing lives in a vendor
+      console or a database table where it can drift.
+    </p>
+
+    <p>The four prompts:</p>
+    <ol>
+      <li><strong><code class="k">extract_criteria.py</code></strong> — turns a JD into 5–10 scorable criteria.</li>
+      <li><strong><code class="k">parse_resume.py</code></strong> — turns raw resume text into a structured profile.</li>
+      <li><strong><code class="k">score_candidate.py</code></strong> — scores one candidate against all criteria in a single call.</li>
+      <li><strong><code class="k">chat_system.py</code></strong> — the agentic chat system prompt. Tool-aware. Behavior-rule-driven.</li>
+    </ol>
+
+    <p>
+      The same patterns recur across all four:
+    </p>
+    <ul>
+      <li><strong>Schema-anchored output.</strong> Each prompt declares the exact JSON schema it
+        wants back, and explicitly demands &ldquo;no prose, no code fences&rdquo;. Downstream parsing
+        is a single <code class="k">json.loads</code>.</li>
+      <li><strong>Calibration anchors.</strong> The scoring prompt has explicit anchor descriptions
+        for each band of the 1–10 scale. This is what stops scores from clustering at 7.</li>
+      <li><strong>Anti-confabulation rules.</strong> &ldquo;Do not invent. If absent, set null. If
+        ambiguous, lower the confidence score for that section.&rdquo;</li>
+      <li><strong>Behavior rules separated from context.</strong> The chat prompt has a fixed
+        <code class="k">_BEHAVIOR_RULES</code> block stitched onto a per-role context block — so we
+        can iterate on rules without rebuilding context.</li>
+    </ul>
+
+    <h3>1. <code>extract_criteria</code> — JD → scorable criteria</h3>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/llm/prompts/extract_criteria.py</span> <span class="lines">L1–31 · SYSTEM_PROMPT</span></figcaption>
+<pre><code>You are an expert technical recruiter and hiring manager.
+Your job is to read a job description and propose a set of concrete, scorable criteria
+that a hiring team can use to evaluate candidate resumes against the role.
+
+Output requirements:
+- Produce 5-10 criteria. Fewer is fine if the JD is sparse; more is fine if the JD is rich.
+- Each criterion must be scorable from a resume — i.e., something you can assess based on
+  what a candidate has done, built, studied, or demonstrated.
+- Cover both hard requirements (specific skills, years of experience, education,
+  certifications) and soft qualities (leadership, communication, ownership, domain
+  judgment) when the JD calls for them.
+- Each criterion needs a short name and a one-to-two sentence description that explains
+  what to look for in a resume to evaluate it.
+- Default weights:
+    - 1.0 for must-haves and explicit requirements
+    - 0.5 for nice-to-haves and implicit/soft qualities
+- Do not invent criteria the JD does not support. Stay grounded in the role description.
+- Do not create overlapping criteria — each should evaluate a distinct dimension.
+
+Output strictly as JSON matching this schema:
+{
+  "criteria": [
+    {
+      "name": "string (short, title-case)",
+      "description": "string (1-2 sentences, what to look for)",
+      "weight": 0.5 | 1.0
+    }
+  ]
+}
+
+Return only the JSON object — no prose, no markdown fences.
+</code></pre>
+    </figure>
+
+    <h3>2. <code>parse_resume</code> — raw text → structured profile</h3>
+
+    <p>
+      Two ideas worth highlighting. First, the schema declares <code class="k">confidence_scores</code>
+      per section — the LLM tells us how clean the source was, which we surface to the user when a
+      profile looks sparse. Second, the rules are explicit about what counts as a skill:
+      &ldquo;<em>specific (PostgreSQL, Kafka, React), not generic (programming, communication)</em>.&rdquo;
+      That one line removed a class of garbage from our profiles.
+    </p>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/llm/prompts/parse_resume.py</span> <span class="lines">L1–54 · SYSTEM_PROMPT</span></figcaption>
+<pre><code>You are an expert resume parser. You convert messy resume text into a clean
+structured profile that downstream tools can use for ranking and filtering.
+
+You must output a single JSON object matching this schema (no prose, no code fences):
+
+{
+  "name": "string | null",
+  "contact_info": {
+    "email": "string | null",
+    "phone": "string | null",
+    "location": "string | null",
+    "links": ["string", ...]
+  },
+  "summary": "string | null",
+  "experiences": [
+    {
+      "title": "string | null",
+      "company": "string | null",
+      "start_date": "string | null",   // free-text as written, e.g. "Jan 2020"
+      "end_date": "string | null",     // "Present" allowed
+      "description": "string | null"   // 1-3 sentences summarizing what they did
+    }
+  ],
+  "education": [
+    {
+      "degree": "string | null",
+      "field": "string | null",
+      "institution": "string | null",
+      "year": "string | null"
+    }
+  ],
+  "skills": ["string", ...],
+  "certifications": ["string", ...],
+  "confidence_scores": {
+    "name": "high | medium | low",
+    "contact_info": "high | medium | low",
+    "experiences": "high | medium | low",
+    "education": "high | medium | low",
+    "skills": "high | medium | low"
+  }
+}
+
+Rules:
+- If you cannot determine a field, set it to null (or [] for list fields).
+- Do NOT invent information. If something isn't in the resume, leave it null.
+- For dates that are ambiguous, use your best interpretation and lower the confidence
+  for that section.
+- Skills should be specific (e.g., "PostgreSQL", "Kafka", "React"), not generic
+  ("programming", "communication").
+- Keep experience descriptions concise — 1 to 3 sentences each.
+- confidence_scores reflects how clean and unambiguous the source text was for each
+  section.
+
+Return ONLY the JSON object.
+</code></pre>
+    </figure>
+
+    <h3>3. <code>score_candidate</code> — calibrated scoring with rationale</h3>
+
+    <p>
+      This is the most carefully engineered prompt in the system. The 1–10 scale has explicit
+      anchor descriptions for every band, and the rules forbid score-padding by demanding cited
+      evidence per criterion. Without these anchors, every candidate ends up at 7.
+    </p>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/llm/prompts/score_candidate.py</span> <span class="lines">L3–37 · SYSTEM_PROMPT</span></figcaption>
+<pre><code>You are an expert technical recruiter who scores resumes against
+defined hiring criteria. Your goal is calibrated, evidence-based scoring — not flattery.
+
+Scoring scale (1-10) — anchor descriptions:
+- 1-2: No evidence. The resume contains nothing supporting this criterion.
+- 3-4: Weak evidence. Some adjacent or transferable signal but no direct match.
+- 5-6: Meets expectations. Direct evidence of the criterion at a competent level.
+- 7-8: Strong. Multiple data points, clear depth or scope.
+- 9-10: Exceptional. Standout indicators (rare expertise, scale, recognition).
+
+For every criterion you must:
+- Cite specific evidence from the candidate's profile (titles, companies, projects, years).
+- If evidence is missing or weak, score it lower — do not pad scores.
+- Provide a 1-2 sentence rationale per criterion.
+
+Output strictly as JSON matching this schema (no prose, no code fences):
+
+{
+  "scores": [
+    {
+      "criterion_name": "string (must match one of the input criterion names exactly)",
+      "score": 1-10 (integer),
+      "rationale": "string (1-2 sentences citing specific evidence)"
+    }
+  ],
+  "overall_summary": "string (1-3 sentences on overall fit)"
+}
+
+Important:
+- Include exactly one entry in `scores` for every criterion provided in the input.
+- Use the criterion's exact `name` from the input as `criterion_name`.
+  Do NOT append weight, parentheses, descriptions, or any other text to the name —
+  only the bare name string as given.
+- Do not invent extra criteria.
+- If the profile is sparse or unparseable, score conservatively (1-3) and say so in the rationale.
+</code></pre>
+    </figure>
+
+    <div class="callout">
+      <span class="label">Why one call per candidate, not one per criterion</span>
+      The model sees all criteria at once, so a strong signal in one (&ldquo;ten years of Python at
+      a fintech&rdquo;) properly informs adjacent ones (&ldquo;backend depth&rdquo;,
+      &ldquo;domain experience&rdquo;) without us having to coordinate independent calls. We pay
+      one round-trip per candidate, and the rationales hang together.
+    </div>
+
+    <h3>4. <code>chat_system</code> — the tool-aware system prompt</h3>
+
+    <p>
+      The chat system prompt has two parts: a per-role context block that's stitched at runtime
+      (role title, JD, criteria with weights, candidate count), and a fixed
+      <code class="k">_BEHAVIOR_RULES</code> block that codifies how the model should use the tools
+      it has. The rules are the result of bug-driven iteration — every line is there because the
+      model used to do something else.
+    </p>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/llm/prompts/chat_system.py</span> <span class="lines">L14–36 · _BEHAVIOR_RULES</span></figcaption>
+<pre><code>Behavioral rules:
+- When asked to highlight, filter, or shortlist candidates, call
+  set_highlights with the matching candidate ids. Highlights are additive
+  and "soft" — never claim to remove or hide candidates, only highlight
+  matches.
+- For filter chaining ("from those…", "of these…"), FIRST call get_ui_state
+  to read the currently highlighted ids. Then run your new search. Then
+  call set_highlights with the INTERSECTION of the existing highlights and
+  the new matches. (If nothing is currently highlighted, treat the chain
+  the same as a fresh filter.)
+- For "remove from highlights" or "un-highlight" requests, use
+  remove_highlights. To start over, use clear_highlights or reset_ui.
+- For sort requests ("sort by X", "rank by X"), call set_sort. Use
+  "aggregate" for the weighted aggregate score, otherwise pass a criterion
+  name verbatim.
+- For statistics, prefer compute_stats over fetching all candidates and
+  counting by hand.
+- For deep-dive questions about one candidate, fetch raw resume text — the
+  structured profile may miss nuance.
+- Reference candidates by name when responding; reference criteria by name
+  when explaining scores.
+- Keep responses tight and actionable — one short paragraph or a brief
+  bulleted list is usually enough.
+</code></pre>
+    </figure>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/llm/prompts/chat_system.py</span> <span class="lines">build_system_prompt · pseudocode</span></figcaption>
+<pre><code>function build_system_prompt(role_title, job_description, criteria, candidate_count):
+
+    # Compose per-role context.
+    criteria_block := for each criterion in criteria:
+                          "- " + name + " (weight " + weight + ")"
+                          + (": " + description  if description present)
+                      joined with newlines,
+                      or "(no criteria defined yet)" if empty
+
+    jd := job_description.strip() or "(no job description provided)"
+
+    # Context block first, fixed behavior rules block second.
+    return template:
+        """
+        You are an HR analysis assistant for the role: {role_title}.
+
+        Job Description:
+        {jd}
+
+        Scoring Criteria:
+        {criteria_block}
+
+        Current candidate pool: {candidate_count} applicants.
+
+        You have tools to query candidate data, compute statistics, and
+        (in due course) control the UI (highlights, sorting). Use them to
+        answer the HR professional's questions accurately.
+
+        {_BEHAVIOR_RULES}        # the fixed block shown above
+        """
+</code></pre>
+    </figure>
+  </section>
+
+  <!-- ====================== PIPELINE ====================== -->
+  <section id="pipeline">
+    <p class="lede">§ 6 · Resume → score pipeline</p>
+    <h2>From PDF bytes to a ranked candidate, in four stages.<a href="#pipeline" class="anchor">#</a></h2>
+
+    <p>
+      Every uploaded resume runs through the same four-stage pipeline: text extraction,
+      LLM structuring, LLM scoring, and rank computation. The pipeline is async and per-candidate;
+      a 50-resume upload progresses concurrently and emits per-candidate progress events over
+      a dedicated WebSocket.
+    </p>
+
+    <figure class="diagram" aria-label="Resume pipeline">
+      <svg viewBox="0 0 880 240" xmlns="http://www.w3.org/2000/svg" role="img">
+        <defs>
+          <marker id="parr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" fill="#4f46e5"/>
+          </marker>
+        </defs>
+        <style>
+          .pb { fill: #ffffff; stroke: #c7cad1; stroke-width: 1.4; }
+          .pb-a { fill: #eef2ff; stroke: #4f46e5; stroke-width: 1.6; }
+          .pb-w { fill: #ecfeff; stroke: #0ea5a4; stroke-width: 1.4; }
+          .pb-y { fill: #fef9c3; stroke: #ca8a04; stroke-width: 1.4; }
+          .pt { font: 600 13px -apple-system, "Inter", sans-serif; fill: #0b0d12; }
+          .pts { font: 500 11px -apple-system, "Inter", sans-serif; fill: #4b5563; }
+          .ped { stroke: #4f46e5; stroke-width: 1.6; fill: none; }
+        </style>
+        <!-- 0 PDF -->
+        <rect class="pb" x="20" y="80" width="120" height="80" rx="8"/>
+        <text class="pt" x="80" y="115" text-anchor="middle">PDF bytes</text>
+        <text class="pts" x="80" y="133" text-anchor="middle">stored on upload</text>
+
+        <line class="ped" x1="140" y1="120" x2="180" y2="120" marker-end="url(#parr)"/>
+
+        <!-- 1 extract -->
+        <rect class="pb-y" x="180" y="40" width="170" height="160" rx="8"/>
+        <text class="pt" x="265" y="64" text-anchor="middle">1. Text extraction</text>
+        <rect class="pb" x="195" y="80" width="140" height="40" rx="6"/>
+        <text class="pts" x="265" y="98" text-anchor="middle">pdfplumber</text>
+        <text class="pts" x="265" y="113" text-anchor="middle">(text PDFs)</text>
+        <rect class="pb" x="195" y="130" width="140" height="55" rx="6"/>
+        <text class="pts" x="265" y="148" text-anchor="middle">if &lt; 80 chars:</text>
+        <text class="pts" x="265" y="163" text-anchor="middle">Tesseract OCR</text>
+        <text class="pts" x="265" y="178" text-anchor="middle">(scans, images)</text>
+
+        <line class="ped" x1="350" y1="120" x2="385" y2="120" marker-end="url(#parr)"/>
+
+        <!-- 2 parse -->
+        <rect class="pb-a" x="385" y="60" width="170" height="120" rx="8"/>
+        <text class="pt" x="470" y="84" text-anchor="middle">2. LLM structuring</text>
+        <text class="pts" x="470" y="104" text-anchor="middle">parse_resume prompt</text>
+        <text class="pts" x="470" y="120" text-anchor="middle">→ structured_profile</text>
+        <text class="pts" x="470" y="136" text-anchor="middle">+ confidence_scores</text>
+        <text class="pts" x="470" y="158" text-anchor="middle">stored as JSON</text>
+
+        <line class="ped" x1="555" y1="120" x2="590" y2="120" marker-end="url(#parr)"/>
+
+        <!-- 3 score -->
+        <rect class="pb-a" x="590" y="60" width="170" height="120" rx="8"/>
+        <text class="pt" x="675" y="84" text-anchor="middle">3. LLM scoring</text>
+        <text class="pts" x="675" y="104" text-anchor="middle">score_candidate prompt</text>
+        <text class="pts" x="675" y="120" text-anchor="middle">→ {scores: [...],</text>
+        <text class="pts" x="675" y="136" text-anchor="middle">overall_summary}</text>
+        <text class="pts" x="675" y="158" text-anchor="middle">stale_scores = false</text>
+
+        <line class="ped" x1="760" y1="120" x2="790" y2="120" marker-end="url(#parr)"/>
+
+        <!-- 4 rank -->
+        <rect class="pb-w" x="790" y="80" width="80" height="80" rx="8"/>
+        <text class="pt" x="830" y="110" text-anchor="middle">4. Rank</text>
+        <text class="pts" x="830" y="128" text-anchor="middle">aggregate</text>
+        <text class="pts" x="830" y="143" text-anchor="middle">+ rank update</text>
+      </svg>
+      <figcaption>Per-candidate pipeline. The system runs N candidates in parallel; rank is
+        recomputed once at batch completion.</figcaption>
+    </figure>
+
+    <h3>Stage 1: text extraction with OCR fallback</h3>
+
+    <p>
+      Real-world resumes are messy. About 70% are text-native PDFs that <code class="k">pdfplumber</code>
+      handles trivially. Another ~20% are scans, photographed pages, or PDFs exported from image
+      editors — text-native extraction returns 0–80 characters of garbage. The remaining slice are
+      mixed (cover page is text, body is a scan). We handle all three:
+    </p>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/pipeline/text_extractor.py</span> <span class="lines">extract_text · pseudocode</span></figcaption>
+<pre><code>function extract_text(pdf_bytes):
+    text := extract_with_pdfplumber(pdf_bytes)
+    if length(text.strip()) >= 80:               # MIN_TEXT_THRESHOLD
+        return text
+
+    ocr_text := extract_with_ocr(pdf_bytes)
+    # Only switch if OCR did better — partial pdfplumber output stays
+    # if OCR is noisier.
+    if length(ocr_text.strip()) > length(text.strip()):
+        return ocr_text
+    return text
+
+
+function extract_with_pdfplumber(pdf_bytes):
+    parts := []
+    try:
+        open PDF, for each page:
+            page_text := page.extract_text()
+            if page_text non-empty: parts.append(page_text)
+    catch any error:
+        log warning, return what we got
+    return parts joined with "\n\n"
+
+
+function extract_with_ocr(pdf_bytes):
+    if pytesseract not installed: return ""      # graceful degrade
+
+    parts := []
+    open PDF, for each page:
+        try:
+            img       := page rendered at 200 DPI
+            page_text := pytesseract(img)
+            if page_text non-empty: parts.append(page_text)
+        catch any error:
+            log warning, continue                # one bad page ≠ lose document
+    return parts joined with "\n\n"
+</code></pre>
+    </figure>
+
+    <p>
+      The 80-character threshold (<code class="k">_MIN_TEXT_THRESHOLD</code>) is the empirical
+      &ldquo;is this actually a resume&rdquo; line; below it we'd be parsing page numbers and
+      headers. The fallback compares OCR text length against the original — we only switch
+      if OCR did better, so a partially-extractable PDF doesn't get downgraded to OCR's noisier
+      output.
+    </p>
+
+    <h3>Stage 2 &amp; 3: LLM structuring then scoring</h3>
+
+    <p>
+      Both stages call the <code class="k">LLMProvider</code> ABC, never a vendor SDK directly.
+      Stage 2 produces the JSON structured profile we showed in
+      <a href="#prompts">§ 5</a>; stage 3 takes that profile, the JD, and the criteria, and
+      returns one score + rationale per criterion in a single call.
+    </p>
+
+    <p>
+      Errors are first-class. If structuring fails, the candidate gets <code class="k">status="error"</code>
+      with an <code class="k">error_message</code> string; the user sees it in the UI and can
+      retry. If scoring fails after structuring succeeded, we keep the structured profile and
+      mark scores as stale, so a criteria edit later will retry naturally.
+    </p>
+
+    <h3>Stage 4: aggregate, rank, and the <code>stale_scores</code> invariant</h3>
+
+    <p>
+      Once all per-criterion scores are persisted, we compute a weight-multiplied aggregate
+      and sort candidates by it to produce ranks. <code class="k">stale_scores</code> is a
+      per-candidate boolean we use to guarantee one thing: <strong>the rank you see on screen
+      always reflects the current set of criteria</strong>. The flag is set true whenever
+      criteria change; <code class="k">_persist_scores</code> is the only place it's set back
+      to false.
+    </p>
+
+    <pre style="background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-family:ui-monospace,monospace;font-size:13px;line-height:1.6;color:var(--ink);overflow-x:auto;">
+# Lifecycle of stale_scores
+
+  candidate uploaded         status=pending,   stale_scores=false
+  scoring complete           status=complete,  stale_scores=false
+  user adds/edits criterion  ─────────────────► stale_scores=true (all candidates)
+  re-score triggered         scoring runs again
+  re-score complete          stale_scores=false (cleared in _persist_scores)
+</pre>
+
+    <p>
+      The UI is free to show a &ldquo;stale&rdquo; badge while the re-score is in flight. The
+      backend guarantees the boolean is correct.
+    </p>
+
+    <h3>Concurrency and the progress channel</h3>
+
+    <p>
+      A batch upload of N resumes processes them concurrently with bounded parallelism. Per-candidate
+      progress events flow over the second WebSocket endpoint
+      (<code class="k">/ws/roles/{role_id}/progress</code>) so the UI can show
+      <em>candidate A is parsing, candidate B is scoring, candidate C errored</em> in real time:
+    </p>
+
+<pre style="background:var(--code-bg);color:var(--code-fg);padding:14px 18px;border-radius:8px;font-family:ui-monospace,monospace;font-size:13px;line-height:1.6;overflow-x:auto;">
+{ "type": "batch_started", "total": 12 }
+
+{ "type": "progress", "candidate_id": "...", "stage": "parsing",
+  "status": "in_progress", "index": 1, "total": 12 }
+{ "type": "progress", "candidate_id": "...", "stage": "parsing",
+  "status": "complete", "candidate_name": "Asha Rao",
+  "index": 1, "total": 12 }
+{ "type": "progress", "candidate_id": "...", "stage": "scoring",
+  "status": "complete", "aggregate_score": 7.4,
+  "index": 1, "total": 12 }
+...
+{ "type": "batch_complete" }
+</pre>
+
+  </section>
+
+  <!-- ====================== LLM ABSTRACTION ====================== -->
+  <section id="llm">
+    <p class="lede">§ 7 · LLM provider abstraction</p>
+    <h2>Anthropic today, Azure OpenAI tomorrow, no rewrites.<a href="#llm" class="anchor">#</a></h2>
+
+    <p>
+      The LLM is behind a four-method ABC. Every call site in the system —
+      <code class="k">ChatService</code>, <code class="k">CriteriaService</code>,
+      <code class="k">ResumeService</code> — depends on the abstract interface. Repointing the
+      whole system at Azure OpenAI is one new file plus a one-line constructor change.
+    </p>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/llm/base.py</span> <span class="lines">LLMProvider · pseudocode</span></figcaption>
+<pre><code>abstract class LLMProvider:
+
+    # Interface for swappable LLM providers. Every call site in the
+    # system depends on this; vendor specifics live in subclasses.
+
+    extract_criteria(job_description)
+        → list of CriterionProposal
+
+    parse_resume(raw_text)
+        → StructuredProfile dict
+
+    score_candidate(profile, job_description, criteria)
+        → { scores: [ {criterion_name, score, rationale}, ... ],
+            overall_summary: string }
+
+    chat(messages, tools, system_prompt)
+        → LLMResponse(text, tool_calls)
+
+        # One agentic-loop turn: messages + tool defs in, text and/or
+        # tool calls out. Implementations map this to their native
+        # tool-use API.
+        #
+        # The loop lives in ChatService — this method MUST NOT loop
+        # on its own.
+</code></pre>
+    </figure>
+
+    <p>
+      Three things to notice. First, <code class="k">chat()</code>'s docstring explicitly forbids
+      provider-side looping — that's how we keep the loop logic in our code. Second, the inputs
+      to <code class="k">chat()</code> are normalised types (<code class="k">LLMMessage</code>,
+      <code class="k">LLMResponse</code>), so nothing leaks vendor wire-format into the rest of
+      the codebase. Third, the other three methods describe semantically what they return — not
+      how — so a provider can use whichever native primitive it wants (function-calling, JSON
+      mode, structured output) as long as the post-condition holds.
+    </p>
+
+    <h3>The Anthropic implementation, in 15 lines</h3>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/llm/anthropic_provider.py</span> <span class="lines">AnthropicProvider.chat · pseudocode</span></figcaption>
+<pre><code>function AnthropicProvider.chat(messages, tools, system_prompt):
+
+    anthropic_messages := translate(messages)        # our format → Anthropic wire format
+
+    response := with_retry(() ->
+        client.messages.create(
+            model      = self.model,
+            max_tokens = 2048,
+            system     = system_prompt,
+            tools      = tools or null,
+            messages   = anthropic_messages,
+        )
+    )
+
+    return parse_chat_response(response)             # → our LLMResponse
+</code></pre>
+    </figure>
+
+    <p>The provider does four small jobs:</p>
+    <ol>
+      <li><strong>Translate</strong> normalised <code class="k">LLMMessage</code> objects to
+        Anthropic wire format (and back, for the response).</li>
+      <li><strong>Retry</strong> transient errors (<code class="k">RateLimitError</code>,
+        <code class="k">APIConnectionError</code>, <code class="k">InternalServerError</code>) with
+        exponential backoff.</li>
+      <li><strong>Parse</strong> the raw response into a <code class="k">LLMResponse</code> with
+        <code class="k">text</code> and <code class="k">tool_calls</code>.</li>
+      <li><strong>Stay out of the loop</strong>. Critically, no orchestration. One turn in, one
+        turn out.</li>
+    </ol>
+
+    <h3>What an Azure OpenAI provider looks like</h3>
+
+    <p>
+      Below is the skeleton of the new file. The shape is identical to the Anthropic provider;
+      the work is in the format-translators. We have already prototyped the translator pair against
+      OpenAI's tool-use schema (it's structurally the same: <code class="k">tool_use</code> blocks
+      become <code class="k">tool_calls</code> arrays, results become role-<code class="k">tool</code>
+      messages with a <code class="k">tool_call_id</code>).
+    </p>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/llm/azure_openai_provider.py</span> <span class="lines">sketch · pseudocode</span></figcaption>
+<pre><code>class AzureOpenAIProvider implements LLMProvider:
+
+    init(endpoint, deployment, api_key):
+        self.client     := AsyncAzureOpenAI(endpoint, api_key, ...)
+        self.deployment := deployment
+
+    chat(messages, tools, system_prompt):
+        oai_messages := translate(messages, system_prompt)   # different shape than Anthropic
+        oai_tools    := wrap each tool as { type: "function", function: t }
+
+        response := with_retry(() ->
+            client.chat.completions.create(
+                model       = self.deployment,
+                messages    = oai_messages,
+                tools       = oai_tools or null,
+                tool_choice = "auto",
+                max_tokens  = 2048,
+            )
+        )
+        return parse_chat_response(response)
+
+    # extract_criteria / parse_resume / score_candidate stay
+    # structurally identical: build user prompt with the same builder,
+    # call self.client, json.loads, validate.
+</code></pre>
+    </figure>
+
+    <p>
+      The four prompts (<a href="#prompts">§ 5</a>) work as-is. They are model-agnostic by design
+      — schema-anchored output and explicit anti-confabulation rules don't change between
+      providers. We have run all four prompts against GPT-4-class models in spike testing with
+      no edits required.
+    </p>
+
+    <div class="callout good">
+      <span class="label">For Spine — the Microsoft-stack story</span>
+      Azure OpenAI is almost certainly where Spine's enterprise customers want their data to flow.
+      The provider abstraction means &ldquo;deploy on Azure&rdquo; is a one-file integration, not a
+      product rewrite. Your customers get tenant-scoped Azure OpenAI deployments; we deliver the
+      provider. Anthropic stays available for customers who prefer it.
+    </div>
+  </section>
+
+  <!-- ====================== REAL-TIME PROTOCOL ====================== -->
+  <section id="realtime">
+    <p class="lede">§ 8 · Real-time protocol</p>
+    <h2>Two WebSocket endpoints, well-defined messages.<a href="#realtime" class="anchor">#</a></h2>
+
+    <p>
+      The system exposes exactly two WebSocket endpoints, both per-role. Everything else is REST.
+    </p>
+
+    <table class="data">
+      <thead><tr><th>Endpoint</th><th>Direction</th><th>Frames</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>/ws/roles/{id}/chat</code></td>
+          <td>↔︎</td>
+          <td>
+            <strong>client → server:</strong> <code>{type: "chat_message", content}</code><br>
+            <strong>server → client:</strong> <code>ready</code>, <code>tool_status</code>
+            (executing / complete + summary), <code>chat_complete</code> (text + ui_mutations
+            + iterations + truncated), <code>error</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>/ws/roles/{id}/progress</code></td>
+          <td>← server</td>
+          <td>
+            <code>batch_started</code>, <code>progress</code> (per-candidate, per-stage),
+            <code>batch_complete</code>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      The progress channel is fed by an in-process pub/sub
+      (<code class="k">app/pipeline/progress.py</code>) so the resume pipeline can publish events
+      without knowing or caring which clients are connected. A reconnecting client doesn't lose
+      events because the server replays the candidate state on connect — the source of truth is
+      the database.
+    </p>
+  </section>
+
+  <!-- ====================== DATA MODEL ====================== -->
+  <section id="data">
+    <p class="lede">§ 9 · Data model &amp; schema evolution</p>
+    <h2>Six tables, one tiny migration shim.<a href="#data" class="anchor">#</a></h2>
+
+    <table class="data">
+      <thead><tr><th>Table</th><th>Key fields</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>roles</code></td><td>id, title, job_description</td><td>One row per hiring role.</td></tr>
+        <tr><td><code>criteria</code></td><td>name, description, weight, source ("auto"/"manual"), order_index</td><td>5–10 per role. Editable by the user.</td></tr>
+        <tr><td><code>candidates</code></td><td>name, raw_text, structured_profile (JSON), parse_confidence, pdf_blob, aggregate_score, rank, status, error_message, stale_scores</td><td>Status is one of pending / extracting / scoring / complete / error.</td></tr>
+        <tr><td><code>criterion_scores</code></td><td>candidate_id, criterion_id, score (1-10), rationale</td><td>One per (candidate, criterion).</td></tr>
+        <tr><td><code>chat_messages</code></td><td>role_enum, content, ui_mutations (JSON)</td><td>Persists every turn including the accumulated UI deltas.</td></tr>
+        <tr><td><code>ui_states</code></td><td>role_id (PK), highlighted_candidate_ids, sort_field, sort_order</td><td>One row per role. The reset endpoint clears it.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>The migration shim</h3>
+    <p>
+      v1 has no Alembic — the schema is small and the velocity case for a tiny in-place shim is
+      strong. The whole thing is 22 lines and runs at startup:
+    </p>
+
+    <figure class="code">
+      <figcaption><span class="file">backend/app/database.py</span> <span class="lines">apply_inplace_migrations · pseudocode</span></figcaption>
+<pre><code>function apply_inplace_migrations():
+
+    # Tiny v1 substitute for Alembic — only handles ADD COLUMN on
+    # existing tables, which is all SQLite supports without a rewrite.
+
+    if "candidates" table doesn't exist: return
+    existing := columns of candidates
+
+    additions := []
+    if "status" not in existing:
+        additions.append("ALTER TABLE candidates ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'pending'")
+    if "error_message" not in existing:
+        additions.append("ALTER TABLE candidates ADD COLUMN error_message TEXT")
+    if "stale_scores" not in existing:
+        additions.append("ALTER TABLE candidates ADD COLUMN stale_scores BOOLEAN NOT NULL DEFAULT 0")
+
+    if additions empty: return
+    in one transaction: execute each addition
+</code></pre>
+    </figure>
+
+    <p>
+      For Spine, the Postgres path is &ldquo;swap the engine URL, run Alembic init, apply&rdquo;.
+      The schema is portable — every column type used is one Postgres also has — and we'd ship
+      an Alembic baseline as part of the integration work.
+    </p>
+  </section>
+
+  <!-- ====================== INTEGRATION ====================== -->
+  <section id="integration">
+    <p class="lede">§ 10 · Integration playbook for Spine</p>
+    <h2>Sidecar deployment, clean contract, .NET-friendly.<a href="#integration" class="anchor">#</a></h2>
+
+    <p>
+      The recommended integration shape is a <strong>sidecar service</strong>: the agentic engine
+      runs as its own Python process behind your existing reverse proxy, with Spine's .NET HRMS
+      acting as the only client. Your customers never see two products. You hold the customer
+      relationship; we hold the inference layer.
+    </p>
+
+    <figure class="diagram" aria-label="Integration topology">
+      <svg viewBox="0 0 880 280" xmlns="http://www.w3.org/2000/svg" role="img">
+        <defs>
+          <marker id="iarr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" fill="#4f46e5"/>
+          </marker>
+        </defs>
+        <style>
+          .ib { fill: #ffffff; stroke: #c7cad1; stroke-width: 1.4; }
+          .ib-a { fill: #eef2ff; stroke: #4f46e5; stroke-width: 1.6; }
+          .ib-w { fill: #ecfeff; stroke: #0ea5a4; stroke-width: 1.4; }
+          .it { font: 600 13px -apple-system, "Inter", sans-serif; fill: #0b0d12; }
+          .its { font: 500 11px -apple-system, "Inter", sans-serif; fill: #4b5563; }
+          .ied { stroke: #4f46e5; stroke-width: 1.6; fill: none; }
+        </style>
+
+        <rect class="ib" x="20" y="100" width="160" height="80" rx="8"/>
+        <text class="it" x="100" y="130" text-anchor="middle">HR user (browser)</text>
+        <text class="its" x="100" y="148" text-anchor="middle">Spine HRMS UI</text>
+
+        <line class="ied" x1="180" y1="140" x2="220" y2="140" marker-end="url(#iarr)"/>
+
+        <rect class="ib" x="220" y="80" width="220" height="120" rx="8"/>
+        <text class="it" x="330" y="106" text-anchor="middle">Spine HRMS (.NET)</text>
+        <text class="its" x="330" y="124" text-anchor="middle">Auth / multi-tenancy</text>
+        <text class="its" x="330" y="140" text-anchor="middle">Candidate & role records</text>
+        <text class="its" x="330" y="156" text-anchor="middle">Calendar / interviews</text>
+        <text class="its" x="330" y="180" text-anchor="middle">— C# client + reverse proxy —</text>
+
+        <line class="ied" x1="440" y1="140" x2="480" y2="140" marker-end="url(#iarr)"/>
+        <text class="its" x="460" y="132" text-anchor="middle">HTTP + WS</text>
+
+        <rect class="ib-a" x="480" y="60" width="240" height="160" rx="10"/>
+        <text class="it" x="600" y="86" text-anchor="middle">Agentic engine (sidecar)</text>
+        <text class="its" x="600" y="104" text-anchor="middle">FastAPI · Python 3.11</text>
+        <text class="its" x="600" y="122" text-anchor="middle">ChatService · tool registry</text>
+        <text class="its" x="600" y="138" text-anchor="middle">Resume pipeline</text>
+        <rect class="ib" x="500" y="158" width="200" height="40" rx="6"/>
+        <text class="its" x="600" y="183" text-anchor="middle">LLMProvider → Azure OpenAI</text>
+
+        <line class="ied" x1="720" y1="140" x2="760" y2="140" marker-end="url(#iarr)"/>
+
+        <rect class="ib-w" x="760" y="100" width="100" height="80" rx="8"/>
+        <text class="it" x="810" y="130" text-anchor="middle">Postgres</text>
+        <text class="its" x="810" y="148" text-anchor="middle">tenant-scoped</text>
+      </svg>
+      <figcaption>Sidecar deployment. Spine HRMS is the only network-facing client. Customer data
+        never leaves your tenant boundary; the LLM call goes to the customer's Azure OpenAI deployment.</figcaption>
+    </figure>
+
+    <h3>The .NET client surface, in one sketch</h3>
+
+    <p>
+      A C# call into the agentic chat is a <code class="k">ClientWebSocket</code> and a JSON
+      message. There is no SDK to install — the contract is small enough that a tiny client
+      class is the right amount of code:
+    </p>
+
+    <figure class="code">
+      <figcaption><span class="file">SpineHRMS.AgenticAts/AgenticChatClient.cs</span> <span class="lines">illustrative</span></figcaption>
+<pre><code>public sealed class AgenticChatClient
+{
+    private readonly Uri _wsBase; // e.g., ws://agentic-ats:8000
+
+    public async IAsyncEnumerable<ChatFrame> SendAsync(
+        Guid roleId,
+        string userMessage,
+        [EnumeratorCancellation] CancellationToken ct)
+    {
+        using var ws = new ClientWebSocket();
+        await ws.ConnectAsync(new Uri(_wsBase, $"/ws/roles/{roleId}/chat"), ct);
+
+        var payload = JsonSerializer.SerializeToUtf8Bytes(new {
+            type    = "chat_message",
+            content = userMessage,
+        });
+        await ws.SendAsync(payload, WebSocketMessageType.Text, true, ct);
+
+        var buffer = new byte[16 * 1024];
+        while (ws.State == WebSocketState.Open)
+        {
+            var result = await ws.ReceiveAsync(buffer, ct);
+            if (result.MessageType == WebSocketMessageType.Close) yield break;
+
+            var frame = JsonSerializer.Deserialize<ChatFrame>(
+                buffer.AsMemory(0, result.Count).Span);
+
+            yield return frame;
+            if (frame.Type == "chat_complete" || frame.Type == "error") yield break;
+        }
+    }
+}
+
+public record ChatFrame(
+    string Type,                    // "tool_status" | "chat_complete" | "error" | "ready"
+    string? Content,                // chat_complete only
+    UiMutations? UiMutations,       // chat_complete only — apply to the UI
+    int? Iterations,
+    bool? Truncated,
+    string? ToolName,               // tool_status only
+    string? Status,                 // tool_status: "executing" | "complete"
+    string? Summary
+);
+</code></pre>
+    </figure>
+
+    <h3>What we own, what Spine owns</h3>
+
+    <table class="data">
+      <thead><tr><th>Concern</th><th>Owner</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Authentication, RBAC, tenancy</td><td>Spine</td><td>Sidecar accepts a signed token in the WS handshake.</td></tr>
+        <tr><td>Customer data residency</td><td>Spine</td><td>Sidecar runs in your VPC; LLM call goes to your Azure OpenAI deployment.</td></tr>
+        <tr><td>UI</td><td>Spine</td><td>The reference React UI is a starting point, not the deliverable.</td></tr>
+        <tr><td>Agentic loop, prompts, tools</td><td>Us</td><td>Versioned with the engine.</td></tr>
+        <tr><td>Resume pipeline (PDF → structured → scored)</td><td>Us</td><td>Stateless except for the resume blob and DB rows.</td></tr>
+        <tr><td>HR-specific tools (interview, offer, etc.)</td><td>Joint</td><td>Schemas + executors authored together; Spine owns the underlying tables.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ====================== QUALITY ====================== -->
+  <section id="quality">
+    <p class="lede">§ 11 · Quality bar</p>
+    <h2>97% backend / 94% frontend. Tests where they matter.<a href="#quality" class="anchor">#</a></h2>
+
+    <div class="stats">
+      <div class="stat"><div class="n">216</div><div class="l">backend tests</div></div>
+      <div class="stat"><div class="n">96.55%</div><div class="l">backend line coverage</div></div>
+      <div class="stat"><div class="n">94.43%</div><div class="l">frontend line coverage</div></div>
+      <div class="stat"><div class="n">100%</div><div class="l">on chat_service, registry, action_tools, all models, anthropic_provider</div></div>
+    </div>
+
+    <p>
+      Coverage isn't the goal — confidence is. The places that approach 100% are the places where
+      a bug would propagate widely (loop logic, tool dispatch, mutation accumulation, provider
+      translation). The places below 100% are intentional: a few error branches in
+      <code class="k">data_tools</code> that are hard to fake without hostile inputs, and a couple
+      of UI rendering paths that we asserted as &ldquo;cosmetic, will drift&rdquo;.
+    </p>
+
+    <p>
+      Tooling: <code class="k">pytest</code> with <code class="k">asyncio_mode = auto</code>
+      (so async tests don't need a marker), <code class="k">pytest-cov</code> for line coverage,
+      <code class="k">vitest</code> + jsdom on the frontend. There are also milestone smoke
+      scripts under <code class="k">frontend/scripts/verify-m*.mjs</code> — out-of-band sanity
+      checks we run before tagging a milestone complete.
+    </p>
+  </section>
+
+  <!-- ====================== ROADMAP ====================== -->
+  <section id="roadmap">
+    <p class="lede">§ 12 · Roadmap &amp; what we'd build with you</p>
+    <h2>Ninety days from contract to first Spine customer in production.<a href="#roadmap" class="anchor">#</a></h2>
+
+    <p>The work, ordered by dependency:</p>
+
+    <table class="data">
+      <thead><tr><th>Stage</th><th>Work</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>Weeks 1–2</b></td>
+          <td>Postgres migration + Alembic baseline</td>
+          <td>Schema is portable. Drop SQLite, write the baseline, set up the connection pool. ~1 engineer-week.</td>
+        </tr>
+        <tr>
+          <td><b>Weeks 1–3</b></td>
+          <td>Multi-tenancy + auth at the WS handshake</td>
+          <td>Tenant-scoped data via row-level filters; signed-token validation in WS lifespan. The data model is already keyed by role_id — multi-tenant is mostly an audit + middleware exercise.</td>
+        </tr>
+        <tr>
+          <td><b>Weeks 2–4</b></td>
+          <td>AzureOpenAIProvider</td>
+          <td>One file, one set of tests. The provider abstraction was designed for this.</td>
+        </tr>
+        <tr>
+          <td><b>Weeks 3–5</b></td>
+          <td>HR-specific tool set (joint design)</td>
+          <td>schedule_interview, advance_to_round, send_rejection, send_offer. Each is a schema + executor + Spine table reference.</td>
+        </tr>
+        <tr>
+          <td><b>Weeks 4–6</b></td>
+          <td>Observability: metrics, traces, structured logs</td>
+          <td>OpenTelemetry. Per-tool latency histograms. Token-cost accounting per tenant.</td>
+        </tr>
+        <tr>
+          <td><b>Weeks 5–7</b></td>
+          <td>Rate limiting + cost controls</td>
+          <td>Per-tenant token budgets; LLM call backpressure tied to provider rate limits.</td>
+        </tr>
+        <tr>
+          <td><b>Weeks 6–9</b></td>
+          <td>.NET client library + Spine UI integration</td>
+          <td>The C# client sketched above, hardened. Drop into Spine's UI layer as a chat side-panel.</td>
+        </tr>
+        <tr>
+          <td><b>Weeks 8–12</b></td>
+          <td>Pilot customer, dogfood, harden</td>
+          <td>Real volume, real edge cases. Iterate prompts based on transcripts.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <span class="label">Where the risks are</span>
+      The two non-trivial unknowns: <em>multi-tenant data isolation guarantees</em> (depends on
+      Spine's existing tenancy model — needs joint design) and <em>cost predictability</em>
+      (token budgets per tenant need real-traffic calibration). Everything else on this list is
+      well-scoped engineering work; nothing on this list is research.
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Prepared for Spine Technologies · this document is self-contained and lives at
+  <code>pitch/index.html</code>. Companion deep-dives in <code>pitch/deep-dives/</code>;
+  editable diagram sources in <code>pitch/diagrams/</code>.
+</footer>
+
+</body>
+</html>

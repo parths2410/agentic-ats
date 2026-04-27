@@ -1,0 +1,37 @@
+%% One chat turn from user message to chat_complete frame
+%% Render: mmdc -i agentic-loop-sequence.mmd -o agentic-loop-sequence.svg
+
+sequenceDiagram
+    autonumber
+    participant U as User / WS
+    participant C as ChatService
+    participant L as LLMProvider.chat()
+    participant T as Tool registry
+    participant A as UIMutationsAccumulator
+
+    U->>C: chat_message
+    Note over C: persist user msg, build prompt, load tools
+
+    rect rgb(238,242,255)
+        Note right of C: Iteration 1
+        C->>L: chat(history, tools, system_prompt)
+        L-->>C: tool_calls=[search_candidates, set_highlights]
+        C->>T: execute(search_candidates, ...)
+        T-->>C: { matches, ... }
+        C->>U: tool_status (executing → complete)
+        C->>T: execute(set_highlights, ...)
+        T-->>C: { ui_state, mutation }
+        C->>U: tool_status (executing → complete)
+        C->>A: merge(mutation)
+    end
+
+    rect rgb(238,242,255)
+        Note right of C: Iteration 2
+        C->>L: chat(history += tool_results)
+        L-->>C: text="Highlighted 5 senior engineers", no tool_calls
+    end
+
+    Note over C: persist assistant msg + accumulated ui_mutations
+    C-->>U: chat_complete { text, ui_mutations, iterations, truncated }
+
+    Note over C,U: If iteration == MAX_ITERATIONS (5) and<br/>the model still wants to call tools,<br/>we break with truncated=true.

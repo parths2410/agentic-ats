@@ -1,0 +1,36 @@
+%% Per-candidate resume processing pipeline
+%% Render: mmdc -i resume-pipeline.mmd -o resume-pipeline.svg
+
+flowchart LR
+    classDef accent  fill:#eef2ff,stroke:#4f46e5,stroke-width:2px,color:#0b0d12;
+    classDef warm    fill:#ecfeff,stroke:#0ea5a4,stroke-width:1.5px,color:#0b0d12;
+    classDef cau     fill:#fef9c3,stroke:#ca8a04,stroke-width:1.5px,color:#0b0d12;
+    classDef plain   fill:#ffffff,stroke:#c7cad1,stroke-width:1.4px,color:#0b0d12;
+    classDef bad     fill:#fef2f2,stroke:#b91c1c,stroke-width:1.4px,color:#0b0d12;
+
+    PDF["PDF bytes<br/>(stored on upload)"]:::plain
+
+    subgraph S1["1 · Text extraction"]
+        Plumb["pdfplumber<br/>(text PDFs)"]:::plain
+        OCR["if &lt; 80 chars:<br/>Tesseract OCR<br/>(scans, images)"]:::plain
+    end
+    S1:::cau
+
+    Parse["2 · LLM structuring<br/>parse_resume prompt<br/>→ structured_profile<br/>+ confidence_scores"]:::accent
+    Score["3 · LLM scoring<br/>score_candidate prompt<br/>→ {scores[], overall_summary}<br/>stale_scores=false"]:::accent
+    Rank["4 · Aggregate + rank<br/>weighted mean<br/>persist rank"]:::warm
+
+    Err["status=error<br/>+ error_message<br/>(retryable)"]:::bad
+
+    PDF --> Plumb
+    Plumb -->|"len &gt;= 80"| Parse
+    Plumb -->|"len &lt; 80"| OCR
+    OCR --> Parse
+    Parse -->|"valid"| Score
+    Parse -->|"malformed / 5xx after retries"| Err
+    Score -->|"valid"| Rank
+    Score -->|"failed"| Err
+
+    %% Criteria edits invalidate scores
+    CritEdit["criteria edited"]:::plain
+    CritEdit -. "stale_scores := true" .-> Score

@@ -1,0 +1,34 @@
+%% LLM provider abstraction
+%% Render: mmdc -i llm-abstraction.mmd -o llm-abstraction.svg
+
+flowchart LR
+    classDef accent  fill:#eef2ff,stroke:#4f46e5,stroke-width:2px,color:#0b0d12;
+    classDef plain   fill:#ffffff,stroke:#c7cad1,stroke-width:1.4px,color:#0b0d12;
+    classDef mute    fill:#f7f8fa,stroke:#c7cad1,stroke-width:1.2px,stroke-dasharray:4 3,color:#4b5563;
+
+    subgraph App["Application services"]
+        Chat["ChatService<br/>(agentic loop)"]:::plain
+        Crit["CriteriaService"]:::plain
+        Resume["ResumeService"]:::plain
+    end
+
+    ABC["LLMProvider (ABC)<br/>extract_criteria · parse_resume<br/>score_candidate · chat"]:::accent
+
+    subgraph Impls["Implementations"]
+        A["AnthropicProvider<br/>~250 LOC · today"]:::plain
+        B["AzureOpenAIProvider<br/>~250 LOC · next"]:::mute
+        D["BedrockProvider<br/>~250 LOC · next"]:::mute
+        F["FakeLLMProvider<br/>tests only"]:::plain
+    end
+
+    Chat --> ABC
+    Crit --> ABC
+    Resume --> ABC
+
+    ABC -.-> A
+    ABC -.-> B
+    ABC -.-> D
+    ABC -.-> F
+
+    Note["Translators isolate vendor wire format.<br/>Prompts and tool definitions are shared.<br/>The loop never knows which provider is loaded."]:::mute
+    Impls --- Note

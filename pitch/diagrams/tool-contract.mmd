@@ -1,0 +1,29 @@
+%% The four-file tool contract
+%% Render: mmdc -i tool-contract.mmd -o tool-contract.svg
+
+flowchart TB
+    classDef accent  fill:#eef2ff,stroke:#4f46e5,stroke-width:2px,color:#0b0d12;
+    classDef warm    fill:#ecfeff,stroke:#0ea5a4,stroke-width:1.5px,color:#0b0d12;
+    classDef cau     fill:#fef9c3,stroke:#ca8a04,stroke-width:1.5px,color:#0b0d12;
+    classDef plain   fill:#ffffff,stroke:#c7cad1,stroke-width:1.4px,color:#0b0d12;
+
+    LLM["LLMProvider.chat()<br/>sees tool definitions"]:::accent
+
+    subgraph Tools["backend/app/tools/"]
+        Defs["definitions.py<br/>JSON schemas + ACTION_TOOL_NAMES"]:::accent
+        Reg["registry.py<br/>name → executor dispatch"]:::warm
+        Data["data_tools.py<br/>7 read-only executors<br/>(db, role_id, args) → dict"]:::plain
+        Acts["action_tools.py<br/>5 mutation executors<br/>(db, role_id, args) → {ui_state, mutation}"]:::cau
+    end
+
+    Acc["UIMutationsAccumulator<br/>in ChatService"]:::accent
+    DB[("SQLite / Postgres")]:::plain
+
+    LLM <-->|"tool defs · tool calls · tool results"| Reg
+    Defs -. "advertised to LLM" .-> LLM
+    Reg --> Data
+    Reg --> Acts
+    Data --> DB
+    Acts --> DB
+    Acts -. "mutation" .-> Acc
+    Acts -. "ui_state" .-> LLM
