@@ -2,14 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../services/api.js";
 import useProgress from "../../hooks/useProgress.js";
+import CandidateModal from "../RoleSetup/CandidateModal.jsx";
+import CandidateRow from "./CandidateRow.jsx";
 import ChatPanel from "./ChatPanel.jsx";
 
 const PROCESSING = new Set(["pending", "extracting", "scoring"]);
-
-function fmtScore(n) {
-  if (n === null || n === undefined) return "—";
-  return Number(n).toFixed(2);
-}
 
 function sortValue(candidate, field, isLiteral) {
   if (isLiteral) {
@@ -17,154 +14,10 @@ function sortValue(candidate, field, isLiteral) {
     if (field === "rank") return candidate.rank ?? null;
     return candidate.aggregate_score ?? null;
   }
-  // Treat as criterion name.
   const hit = candidate.scores?.find(
     (s) => s.criterion_name?.toLowerCase() === field.toLowerCase(),
   );
   return hit ? hit.score : null;
-}
-
-function StatusBadge({ status }) {
-  return <span className={`status-badge status-${status}`}>{status}</span>;
-}
-
-function ConfidencePills({ confidence }) {
-  const entries = Object.entries(confidence || {}).filter(
-    ([, v]) => typeof v === "string"
-  );
-  if (entries.length === 0) return null;
-  return (
-    <div className="confidence-pills" aria-label="Parse confidence">
-      {entries.map(([section, level]) => (
-        <span key={section} className={`confidence-pill confidence-${level}`}>
-          {section}: {level}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function CandidateCard({ candidate, onExpand, expanded, detail, onDelete, highlighted }) {
-  const expandable = candidate.status === "complete";
-  return (
-    <li className={`candidate-card status-${candidate.status}${highlighted ? " highlighted" : ""}`}>
-      <div className="candidate-row">
-        <div className="candidate-rank">
-          {candidate.rank ? `#${candidate.rank}` : "—"}
-        </div>
-        <div className="candidate-main">
-          <div className="candidate-name">
-            {candidate.name || candidate.pdf_filename || "(unnamed)"}
-            <StatusBadge status={candidate.status} />
-          </div>
-          <div className="candidate-meta">
-            {candidate.pdf_filename && (
-              <span className="hint">{candidate.pdf_filename}</span>
-            )}
-            {candidate.error_message && (
-              <span className="error-inline">{candidate.error_message}</span>
-            )}
-          </div>
-          {candidate.scores.length > 0 && (
-            <div className="mini-scores">
-              {candidate.scores.map((s) => (
-                <span key={s.criterion_id} className="mini-score" title={s.rationale}>
-                  <span className="mini-score-name">{s.criterion_name}</span>
-                  <span className="mini-score-val">{fmtScore(s.score)}</span>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="candidate-aggregate">
-          <div className="agg-num">{fmtScore(candidate.aggregate_score)}</div>
-          <div className="hint">aggregate</div>
-        </div>
-        <div className="candidate-actions">
-          {expandable && (
-            <button
-              onClick={onExpand}
-              className="btn btn-secondary btn-sm"
-              title="Expand candidate detail"
-            >
-              {expanded ? "Hide" : "Expand"}
-            </button>
-          )}
-          <button onClick={onDelete} className="btn btn-danger btn-sm" title="Remove candidate">
-            ×
-          </button>
-        </div>
-      </div>
-
-      {expanded && detail && (
-        <div className="candidate-detail">
-          {detail.parse_confidence && (
-            <ConfidencePills confidence={detail.parse_confidence} />
-          )}
-          {detail.structured_profile?.summary && (
-            <p className="profile-summary">{detail.structured_profile.summary}</p>
-          )}
-
-          <section className="profile-section">
-            <h4>Score breakdown</h4>
-            <ul className="rationale-list">
-              {detail.scores.map((s) => (
-                <li key={s.criterion_id}>
-                  <div className="rationale-head">
-                    <strong>{s.criterion_name}</strong>
-                    <span className="rationale-score">
-                      {fmtScore(s.score)} <span className="hint">× weight {s.weight}</span>
-                    </span>
-                  </div>
-                  <p className="rationale-text">{s.rationale}</p>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {detail.structured_profile?.experiences?.length > 0 && (
-            <section className="profile-section">
-              <h4>Experience</h4>
-              <ul className="profile-list">
-                {detail.structured_profile.experiences.map((e, i) => (
-                  <li key={i}>
-                    <div>
-                      <strong>{e.title || "(role)"}</strong>
-                      {e.company && <> @ {e.company}</>}
-                    </div>
-                    <div className="hint">
-                      {e.start_date} – {e.end_date}
-                    </div>
-                    {e.description && <p>{e.description}</p>}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {detail.structured_profile?.education?.length > 0 && (
-            <section className="profile-section">
-              <h4>Education</h4>
-              <ul className="profile-list">
-                {detail.structured_profile.education.map((e, i) => (
-                  <li key={i}>
-                    {e.degree} {e.field && `in ${e.field}`} — {e.institution} ({e.year})
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {detail.structured_profile?.skills?.length > 0 && (
-            <section className="profile-section">
-              <h4>Skills</h4>
-              <p>{detail.structured_profile.skills.join(", ")}</p>
-            </section>
-          )}
-        </div>
-      )}
-    </li>
-  );
 }
 
 export default function Workspace() {
@@ -172,12 +25,11 @@ export default function Workspace() {
   const [role, setRole] = useState(null);
   const [criteria, setCriteria] = useState([]);
   const [candidates, setCandidates] = useState([]);
-  const [details, setDetails] = useState({});
-  const [expandedId, setExpandedId] = useState(null);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [highlightedIds, setHighlightedIds] = useState([]);
-  const [sort, setSort] = useState(null); // { field, order } or null
+  const [sort, setSort] = useState(null);
 
   const { batch, perCandidate } = useProgress(roleId);
 
@@ -263,8 +115,6 @@ export default function Workspace() {
     }
   }
 
-  // While processing, refetch the candidate list periodically so scores
-  // appear as they land. The WS hook tells us when *something* changed.
   useEffect(() => {
     const anyProcessing = candidates.some((c) => PROCESSING.has(c.status));
     const batchActive = batch?.active;
@@ -277,32 +127,6 @@ export default function Workspace() {
     if (!perCandidate || Object.keys(perCandidate).length === 0) return;
     refreshCandidates();
   }, [perCandidate, refreshCandidates]);
-
-  async function handleExpand(candidate) {
-    if (expandedId === candidate.id) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(candidate.id);
-    if (!details[candidate.id]) {
-      try {
-        const d = await api.candidates.get(roleId, candidate.id);
-        setDetails((prev) => ({ ...prev, [candidate.id]: d }));
-      } catch (e) {
-        setError(e.message);
-      }
-    }
-  }
-
-  async function handleDelete(candidate) {
-    if (!confirm(`Remove ${candidate.name || candidate.pdf_filename}?`)) return;
-    try {
-      await api.candidates.delete(roleId, candidate.id);
-      setCandidates((prev) => prev.filter((c) => c.id !== candidate.id));
-    } catch (e) {
-      setError(e.message);
-    }
-  }
 
   async function handleRescore() {
     setError(null);
@@ -332,7 +156,6 @@ export default function Workspace() {
     arr.sort((a, b) => {
       const va = sortValue(a, sort.field, isLiteral);
       const vb = sortValue(b, sort.field, isLiteral);
-      // Nulls always last regardless of direction.
       if (va === null && vb === null) return 0;
       if (va === null) return 1;
       if (vb === null) return -1;
@@ -413,16 +236,13 @@ export default function Workspace() {
               No candidates yet. <Link to={`/roles/${roleId}?tab=resumes`}>Upload resumes</Link>.
             </p>
           ) : (
-            <ul className="candidate-list">
+            <ul className="wc-list">
               {orderedCandidates.map((c) => (
-                <CandidateCard
+                <CandidateRow
                   key={c.id}
                   candidate={c}
-                  expanded={expandedId === c.id}
-                  detail={details[c.id]}
-                  onExpand={() => handleExpand(c)}
-                  onDelete={() => handleDelete(c)}
                   highlighted={highlightSet.has(c.id)}
+                  onSelect={setSelectedCandidate}
                 />
               ))}
             </ul>
@@ -432,6 +252,14 @@ export default function Workspace() {
           <ChatPanel roleId={roleId} onMutations={applyMutations} />
         </div>
       </div>
+
+      {selectedCandidate && (
+        <CandidateModal
+          roleId={roleId}
+          candidate={selectedCandidate}
+          onClose={() => setSelectedCandidate(null)}
+        />
+      )}
     </section>
   );
 }

@@ -62,7 +62,6 @@ beforeEach(() => {
   vi.spyOn(api.roles, "get").mockResolvedValue(ROLE);
   vi.spyOn(api.criteria, "list").mockResolvedValue(CRITERIA);
   vi.spyOn(api.candidates, "list").mockResolvedValue(CANDIDATES);
-  vi.spyOn(api.candidates, "delete").mockResolvedValue(null);
   vi.spyOn(api.candidates, "get").mockResolvedValue({
     ...CANDIDATES[0],
     raw_text: "...",
@@ -93,24 +92,45 @@ describe("Workspace", () => {
     expect(screen.getByText(/Assistant/i)).toBeInTheDocument();
   });
 
-  it("expands candidate detail on click", async () => {
-    const user = userEvent.setup();
+  it("renders the rank, aggregate score, and status pill on each row", async () => {
     renderWith();
     await screen.findByText("Ada");
-    await user.click(screen.getByRole("button", { name: /expand/i }));
-    await screen.findByText(/Ada is great/);
+    expect(screen.getByText("#1")).toBeInTheDocument();
+    expect(screen.getByText("8.5")).toBeInTheDocument();
+    expect(screen.getByText("complete")).toBeInTheDocument();
+    expect(screen.getByText("pending")).toBeInTheDocument();
   });
 
-  it("delete button calls API after confirm", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+  it("clicking a row opens the candidate modal", async () => {
     const user = userEvent.setup();
     renderWith();
     await screen.findByText("Ada");
-    const deleteButtons = screen
-      .getAllByRole("button", { name: "×" })
-      .filter((b) => b.title === "Remove candidate");
-    await user.click(deleteButtons[0]);
-    await waitFor(() => expect(api.candidates.delete).toHaveBeenCalledWith("r1", "c1"));
+    await user.click(screen.getByText("Ada"));
+    await waitFor(() => expect(api.candidates.get).toHaveBeenCalledWith("r1", "c1"));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("Escape closes the candidate modal", async () => {
+    const user = userEvent.setup();
+    renderWith();
+    await screen.findByText("Ada");
+    await user.click(screen.getByText("Ada"));
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("highlighted rows get the highlighted CSS class", async () => {
+    api.chat.uiState.mockResolvedValueOnce({
+      role_id: "r1",
+      highlighted_candidate_ids: ["c1"],
+      current_sort_field: null,
+      current_sort_order: null,
+    });
+    renderWith();
+    await screen.findByText("Ada");
+    const row = screen.getByText("Ada").closest("li");
+    expect(row.className).toContain("highlighted");
   });
 
   it("Re-score all triggers the scoring API", async () => {
@@ -194,18 +214,19 @@ describe("Workspace", () => {
     await waitFor(() => expect(api.scoring.rescore).toHaveBeenCalledWith("r1"));
   });
 
-  it("renders confidence pills when expanded candidate has parse_confidence", async () => {
-    api.candidates.get.mockResolvedValueOnce({
-      ...CANDIDATES[0],
-      raw_text: "...",
-      structured_profile: { summary: "x", experiences: [], education: [], skills: [] },
-      parse_confidence: { name: "high", education: "low" },
-    });
-    const user = userEvent.setup();
+  it("falls back to filename when candidate has no parsed name", async () => {
     renderWith();
-    await screen.findByText("Ada");
-    await user.click(screen.getByRole("button", { name: /expand/i }));
-    await screen.findByText(/name: high/);
-    expect(screen.getByText(/education: low/)).toBeInTheDocument();
+    const matches = await screen.findAllByText("x.pdf");
+    expect(matches.length).toBeGreaterThan(0);
+  });
+
+  it("empty state links to the Resumes tab on RoleSetup", async () => {
+    api.candidates.list.mockResolvedValueOnce([]);
+    renderWith();
+    await screen.findByText(/No candidates yet/);
+    expect(screen.getByRole("link", { name: /upload resumes/i })).toHaveAttribute(
+      "href",
+      "/roles/r1?tab=resumes",
+    );
   });
 });

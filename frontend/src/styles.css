@@ -717,86 +717,56 @@ main:has(> .workspace-page) {
 .workspace-list-pane { min-width: 0; }
 .workspace-chat-pane { min-width: 0; }
 
-.candidate-list { list-style: none; padding: 0; margin: 1rem 0 0; display: flex; flex-direction: column; gap: 0.6rem; }
-.candidate-card {
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 0.85rem 1rem;
+/* Workspace candidate rows (sparse hairline-divider rows) */
+.wc-list { list-style: none; padding: 0; margin: 0; }
+.wc-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0.5rem 1rem 0.75rem;
+  border-bottom: 1px solid #ececec;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  background: transparent;
+  transition: background 0.1s;
 }
-.candidate-card.status-error { border-color: #f5b6b1; background: #fffafa; }
-.candidate-card.status-scoring,
-.candidate-card.status-extracting,
-.candidate-card.status-pending {
-  border-color: #d6c8f3;
-  background: #fbfaff;
-}
-
-.candidate-row { display: flex; gap: 0.9rem; align-items: center; }
-.candidate-rank {
+.wc-row:last-child { border-bottom: none; }
+.wc-row:hover { background: #fafafa; }
+.wc-row:focus-visible { outline: 2px solid #99c8f5; outline-offset: -2px; }
+.wc-row.highlighted { border-left-color: #facc15; background: #fffbeb; }
+.wc-row.highlighted:hover { background: #fff7d6; }
+.wc-rank {
   font-weight: 700;
-  font-size: 1.1rem;
-  color: #555;
-  min-width: 2.5rem;
-  text-align: center;
+  font-size: 1rem;
+  color: #888;
+  min-width: 2.25rem;
+  text-align: right;
 }
-.candidate-main { flex: 1; min-width: 0; }
-.candidate-name {
+.wc-info { flex: 1; min-width: 0; }
+.wc-name {
   font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  font-size: 1rem;
+  margin-bottom: 0.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.candidate-meta { color: #777; font-size: 0.85rem; margin-top: 0.15rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.error-inline { color: #8a1f1f; }
-.candidate-aggregate { text-align: right; min-width: 4.5rem; }
-.agg-num { font-size: 1.4rem; font-weight: 700; color: #0a4f8a; }
-.candidate-actions { display: flex; gap: 0.4rem; }
-
-.status-badge {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
+.wc-meta {
+  color: #888;
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wc-error-inline { color: #b3261e; }
+.wc-score {
   font-weight: 600;
+  font-size: 1rem;
+  min-width: 3.5rem;
+  text-align: right;
+  color: #1a1a1a;
 }
-.status-badge.status-complete { background: #d4f4dd; color: #1a6b32; }
-.status-badge.status-error { background: #f9d6d6; color: #8a1f1f; }
-.status-badge.status-pending,
-.status-badge.status-extracting,
-.status-badge.status-scoring { background: #ece4fb; color: #5b3aaa; }
-
-.mini-scores { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.5rem; }
-.mini-score {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  background: #f3f3f3;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-}
-.mini-score-name { color: #555; }
-.mini-score-val { font-weight: 600; color: #0a4f8a; }
-
-.candidate-detail {
-  margin-top: 0.85rem;
-  padding-top: 0.85rem;
-  border-top: 1px solid #eee;
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-.profile-summary { color: #444; font-style: italic; margin: 0; }
-.profile-section h4 { margin: 0 0 0.4rem; font-size: 0.95rem; }
-.profile-list { padding-left: 1.2rem; margin: 0; display: flex; flex-direction: column; gap: 0.4rem; }
-.profile-list p { margin: 0.15rem 0 0; color: #444; font-size: 0.9rem; }
-
-.rationale-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
-.rationale-head { display: flex; justify-content: space-between; gap: 0.5rem; }
-.rationale-score { color: #0a4f8a; font-weight: 600; }
-.rationale-text { margin: 0.2rem 0 0; color: #555; font-size: 0.9rem; }
+.wc-score-denom { font-size: 0.72rem; color: #888; font-weight: 400; }
 
 /* ---- Workspace + Chat panel layout ---- */
 .workspace-with-chat {
@@ -886,13 +856,6 @@ main:has(> .workspace-page) {
   border: 1px solid #ccc;
   font-family: inherit;
   font-size: 0.95rem;
-}
-
-/* M4: chat-driven highlight */
-.candidate-card.highlighted {
-  border-color: #ffd56a;
-  background: linear-gradient(0deg, #fffbe5, #fffbe5);
-  box-shadow: 0 0 0 2px rgba(255, 213, 106, 0.45);
 }
 
 /* M5: stale-scores banner + confidence pills */
