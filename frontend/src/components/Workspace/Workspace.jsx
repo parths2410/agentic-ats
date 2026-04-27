@@ -5,6 +5,7 @@ import useProgress from "../../hooks/useProgress.js";
 import CandidateModal from "../RoleSetup/CandidateModal.jsx";
 import CandidateRow from "./CandidateRow.jsx";
 import ChatPanel from "./ChatPanel.jsx";
+import Splitter from "./Splitter.jsx";
 
 const PROCESSING = new Set(["pending", "extracting", "scoring"]);
 
@@ -229,9 +230,13 @@ export default function Workspace() {
         </div>
       )}
 
-      <div className="workspace-split">
-        <div className="workspace-list-pane">
-          {candidates.length === 0 ? (
+      <Splitter
+        storageKey="workspace.split.fraction"
+        defaultFraction={0.4}
+        min={0.25}
+        max={0.75}
+        left={
+          candidates.length === 0 ? (
             <p style={{ color: "#777", marginTop: "1.5rem" }}>
               No candidates yet. <Link to={`/roles/${roleId}?tab=resumes`}>Upload resumes</Link>.
             </p>
@@ -246,12 +251,10 @@ export default function Workspace() {
                 />
               ))}
             </ul>
-          )}
-        </div>
-        <div className="workspace-chat-pane">
-          <ChatPanel roleId={roleId} onMutations={applyMutations} />
-        </div>
-      </div>
+          )
+        }
+        right={<ChatPanel roleId={roleId} onMutations={applyMutations} />}
+      />
 
       {selectedCandidate && (
         <CandidateModal

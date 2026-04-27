@@ -706,16 +706,43 @@ main:has(> .workspace-page) {
 }
 .workspace-setup-link:hover { text-decoration: underline; }
 
-/* Workspace two-column split */
-.workspace-split {
+/* Workspace two-column split with draggable handle */
+.splitter {
   display: grid;
-  grid-template-columns: 40fr 60fr;
-  gap: 1.5rem;
   align-items: start;
   min-height: calc(100vh - 14rem);
 }
-.workspace-list-pane { min-width: 0; }
-.workspace-chat-pane { min-width: 0; }
+.splitter-pane { min-width: 0; padding: 0 0.25rem; }
+.splitter-left { padding-left: 0; padding-right: 0.5rem; }
+.splitter-right { padding-left: 0.5rem; padding-right: 0; }
+.splitter-handle {
+  cursor: col-resize;
+  position: relative;
+  background: transparent;
+  align-self: stretch;
+  touch-action: none;
+}
+.splitter-handle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #ececec;
+  transition: background 0.1s, width 0.1s;
+}
+.splitter-handle:hover::before,
+.splitter.dragging .splitter-handle::before {
+  background: #99c8f5;
+  width: 3px;
+  transform: translateX(-1px);
+}
+.splitter-handle:focus-visible::before {
+  background: #0066cc;
+  width: 3px;
+  transform: translateX(-1px);
+}
 
 /* Workspace candidate rows (sparse hairline-divider rows) */
 .wc-list { list-style: none; padding: 0; margin: 0; }
