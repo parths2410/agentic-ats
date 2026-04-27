@@ -60,8 +60,18 @@ export default function useChat(roleId, { onMutations } = {}) {
     const ws = api.ws.chat(roleId);
     wsRef.current = ws;
     readyRef.current = false;
+    let alive = true;
+
+    ws.onopen = () => {
+      if (!alive) return;
+      // Clear any stale connection-error left over from a prior socket
+      // (e.g. React strict-mode tears down the first attempt while still
+      // CONNECTING, which fires an error event before the second succeeds).
+      setError((prev) => (prev === "Chat connection error" ? null : prev));
+    };
 
     ws.onmessage = (evt) => {
+      if (!alive) return;
       let data;
       try {
         data = JSON.parse(evt.data);
@@ -105,12 +115,24 @@ export default function useChat(roleId, { onMutations } = {}) {
       }
     };
 
-    ws.onerror = () => setError("Chat connection error");
+    ws.onerror = () => {
+      if (!alive) return;
+      setError("Chat connection error");
+    };
     ws.onclose = () => {
+      if (!alive) return;
       readyRef.current = false;
     };
 
     return () => {
+      alive = false;
+      // Detach handlers before close() — the browser fires `error` and
+      // `close` events when a still-CONNECTING socket is torn down, and
+      // we don't want those to update state after the effect's gone.
+      ws.onopen = null;
+      ws.onmessage = null;
+      ws.onerror = null;
+      ws.onclose = null;
       try {
         ws.close();
       } catch {
