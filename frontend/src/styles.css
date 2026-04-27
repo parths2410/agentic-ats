@@ -30,6 +30,24 @@ main {
   color: #999;
 }
 
+/* Back-to-roles link, fixed in the left gutter */
+.back-to-roles {
+  position: fixed;
+  top: 1.75rem;
+  left: 1.5rem;
+  z-index: 20;
+  font-size: 0.85rem;
+  color: #888;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+}
+.back-to-roles:hover { color: #1a1a1a; background: #ececec; }
+@media (max-width: 900px) {
+  .back-to-roles { top: 0.75rem; left: 0.75rem; }
+}
+
 h1 { margin: 0; font-size: 1.6rem; }
 h2 { margin: 0; font-size: 1.2rem; }
 .hint { color: #666; font-size: 0.9rem; margin: 0.25rem 0 0; }
@@ -669,7 +687,7 @@ h2 { margin: 0; font-size: 1.2rem; }
 
 /* Workspace page width override — only this page gets the wider canvas */
 main:has(> .workspace-page) {
-  max-width: 1400px;
+  max-width: 1280px;
 }
 
 /* Workspace */
