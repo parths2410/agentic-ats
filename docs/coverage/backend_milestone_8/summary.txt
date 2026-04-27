@@ -1,0 +1,10 @@
+app/services/ui_state_service.py         71      0   100%
+app/tools/__init__.py                     0      0   100%
+app/tools/action_tools.py                38      0   100%
+app/tools/data_tools.py                 173      6    97%   63, 89, 202, 205, 259, 323
+app/tools/definitions.py                 19      0   100%
+app/tools/registry.py                    27      0   100%
+-------------------------------------------------------------------
+TOTAL                                  1651     57    97%
+Required test coverage of 65.0% reached. Total coverage: 96.55%
+216 passed in 4.61s
